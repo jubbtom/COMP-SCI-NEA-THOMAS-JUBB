@@ -1,0 +1,38 @@
+//Connect to the database 
+//Execute a search query of the fighter list (or if we’re doing something else, we do that table), excluding stuff that isn’t necessary for the user to see, such as photo data and ranking data, ordered by whatever order is needed 
+//Clear the table we’re inserting into 
+//Iterate through rows and insert each row into the SQL table 
+SUBROUTINE sql(query)
+    try and do 
+        connectionSettings= (
+            "Driver=SQL SERVER
+            SERVER=SERVER
+            DATABASE=DATABASE
+            Trusted_Connection=yes;"
+        )
+        connection = pyodbc.connect(connectionSettings)
+        if connection is successful do
+            OUTPUT "Connection successful"
+            connection.execute(query)
+        end
+        return conneciton.result()
+    on Exception do
+        OUTPUT error
+    after do 
+        if connection is successful do
+            connection.close()
+            OUTPUT "Connection closed"
+
+SUBROUTINE makeTable(query,table,headers)
+    rows=sql(query)
+    model=Qt.itemModel
+    model.setHeaders(headers)
+    for each row in rows do
+        item=[Qt.item(field for each field in the row)]
+        model.addRow(item)
+    table.setModel(model)
+    table.setHeaders(headers)
+    
+    
+
+

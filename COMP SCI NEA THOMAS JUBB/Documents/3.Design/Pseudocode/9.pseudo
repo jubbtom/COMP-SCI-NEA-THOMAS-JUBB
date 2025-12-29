@@ -1,0 +1,62 @@
+ //   Display all fighters (only ones in the weight of the other fighter if another fighter has been selected in the other box) in a drop-down box, sorted alphabetically 
+//    When the user clicks calculate, calculate the odds of the fight using a logarithmic Bradley-Terry model 
+//    Display odds in a percentage, depending on who has the dominant rating 
+global oddsComboCurrentWeightClass
+SUBROUTINE initialiseBoxes() do 
+    currentA=fighterABox.data
+    currentB=fighterABox.data
+    fighterABox.Clear
+    fighterBBox.Clear
+    if oddsComboCurrentWeightClass do 
+      query="SELECT FighterID, Name FROM Fighters WHERE WeightClass="+oddsComboCurrentWeightClass+";"
+    else do 
+      query="SELECT FighterID,Name FROM Fighters;"
+    fighterList=SQL(query)
+    currents=[currentA,currentB]
+    comboBoxes=[fighterABox,fighterBBox]
+    if fighterlist does not exist do
+        fighterlist=[]
+    end
+    for i terms in range of 1 to 2 do
+        for fighterID,fighterName in fighterList do 
+            comboBoxes[i].addItem(fighterName,fighterID)
+            index = comboBoxes[i].findData(currents[i])
+            if index != -1 do 
+                comboBoxes[i].setIndex(index)
+            end
+        end
+    end 
+end
+
+SUBROUTINE comboBoxesChanged(index,box) do 
+    if box = "A" do 
+        currentID = fighterABox.data
+    end
+    elif box = "B" do 
+        currentID = fighterABox.data
+    end
+    if currentID exists do 
+        currentFighter = SQL("SELECT * FROM Fighters WHERE FighterID="+currentID+";")
+        if currentFighter exists do 
+            oddsComboCurrentWeightClass=currentFighter[2]
+        end
+        else do 
+            oddsComboCurrentWeightClass= None
+        end
+    end
+    else do 
+        oddsComboCurrentWeightClass=None
+    end
+    initialiseBoxes()
+    currentBID = fighterBBox.data
+    if fighterAID exists do 
+        fighterAdata=SQL("SELECT * FROM Fighters WHERE FighterID="+currentID+";")
+        fighterAurl= fighterAdata[8] if fighterAdata and length(fighterAdata) > 8 else None
+        loadImage(fighterAurl,fighterAoddsImage)
+    end
+    if fighterBID exists do 
+        fighterBdata=SQL("SELECT * FROM Fighters WHERE FighterID="+currentBID+";")
+        fighterAurl= fighterAdata[8] if fighterAdata and length(fighterAdata) > 8 else None
+        loadImage(fighterAurl,fighterAoddsImage)
+    end
+end

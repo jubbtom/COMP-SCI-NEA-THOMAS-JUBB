@@ -1,0 +1,41 @@
+//  Find all fighter names after the user presses the search button (if it’s blank, deny search)
+//   Take the first fighter’s name and create a 2d matrix list based on the fighter name and the search term 
+//   Go cell to cell, finding the least amount of edits needed for each part of the string 
+//   Take the minimum amount of edits (bottom right if you visualise the list like a matrix) and put that minimum edit distance into a list with the fighter’s ID 
+//   Repeat these steps for each fighter 
+//   Quicksort the minimum edit distance list in ascending order 
+//   Redisplay the fighter list to the user/admin, ordered by the minimum edit distance list 
+SUBROUTINE editDistance(string1,string2) do
+    length1,length2=length(string1),length(string2)
+    //swap if longer
+    if length1 > length2 do
+        string1,string2=string2,string1
+        length1,length2=length2,length1
+    end
+    row=list(range(length1+1))
+    for i terms from 1 to (length2+1) do
+        lastRow,currentRow=currentRow,currentRow[i]+currentRow[0]*length1
+        for j terms from 1 to (length1+1) do
+            add=lastRow[j]+1
+            delete=currentRow[j-1]+1
+            substitute=lastRow[j-1]
+            change=substitute
+            if string1[j-1] != string2[i-1] do
+                change=change+1
+            end
+            currentRow[j]=minimum(add,delete,change)
+        end
+    end
+    return currentRow[length1]
+end
+SUBROUTINE distanceOffTable(searchTerm) do
+    rows=SQL("SELECT FighterID,Name FROM Fighters;")
+    distances=[]
+    for i terms from 1 to length(rows) do
+        current=rows[i][1]
+        self.editDistance(current,searchTerm)
+        distances.append(rows[i][0],distance)
+    end
+    SORT distances by [1] ascending
+    return distances
+end

@@ -1,0 +1,34 @@
+//Figure out how many weight classes there are 
+//For each weight class, find the last declared title fight
+//Set the belt of the weight class to belong to the last winner of the weight class
+If a weight class doesn’t have a belt, do a SELECT DISTINCT SQL function on the weight classes,
+ which will show me all of the individual weight classes. Then, for each of these weight classes, search through the belts table. 
+ If a weight class doesn’t have a belt, put the results of this query into a list.
+SELECT IDs from fights where it’s a title fight and it’s the weight class we are looking at. Order by date.
+ Look at the most recent title fight and get the fight ID of it. Put this into a list which looks like [fightID,weightclass]. 
+ Iterate through each weight class.Look through the fighterfights table to figure out which corner won,
+  get that fighter's ID and then add a belt onto the belts table based on their weight class and ID 
+
+
+SUBROUTINE autoBeltAssignment() do 
+    unassignedBelts=SQL("SELECT BeltID FROM Belts WHERE Weight=NULL;")
+    for i terms in length(unassignedBelts) do 
+        SQL("UPDATE Belts SET FighterID=(SELECT FighterID FROM FighterFights 
+        WHERE FightID=(SELECT FightID FROM FIGHTS WHERE Title="+unassignedBelts[i]+" ORDER BY Date DESC LIMIT 1))
+        WHERE BeltID="+unassignedBelts[i]+";")
+    end
+end
+SUBROUTINE autoBeltCreation() do 
+    beltLessDivisions=[]
+    weightClasses=SQL("SELECT DISTINCT Title FROM Fights")
+    for i terms in length(weightClasses) do 
+        checkForBelt=SQL("SELECT * FROM Belts WHERE Weight="+weightClasses[i]+";")
+        if checkForBelt does not exist do
+            beltLessDivisions.append(weightClasses[i])
+        end
+    end
+    for i terms in length(beltLessDivisions) do 
+        SQL("INSERT INTO Belts (Weight,FighterID) VALUES ("+beltLessDivisions[i]+",NULL);")
+        autoBeltAssignment()
+    end
+end

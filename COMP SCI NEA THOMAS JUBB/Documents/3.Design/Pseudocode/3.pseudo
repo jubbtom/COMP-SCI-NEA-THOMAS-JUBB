@@ -1,0 +1,13 @@
+//On the user clicking the top bit of their table, sort them by the factor they clicked if it’s quantitative. If they click it again, sort it the other way round 
+//On the user clicking a qualitative top bit of the table, do an SQL selection of all the possible qualitative parts of the table, put them all in a dropdown box and then do an SQL selection of all fighters who have that factor.  
+def clickHeader(header,type,request,toGet,table,headers)
+    if type="qual" do 
+        query="SELECT "+toGet+" FROM Fighters WHERE "+Header+"="+request+";"
+    else do
+        query="SELECT "+toGet+" FROM Fighters ORDER BY "+request+";"
+    end
+    makeTable(query,table,headers)
+
+
+
+

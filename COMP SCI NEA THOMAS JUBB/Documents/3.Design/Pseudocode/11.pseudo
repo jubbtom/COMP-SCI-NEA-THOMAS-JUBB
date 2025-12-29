@@ -1,0 +1,6 @@
+//When the admin selects Add Fighter create a blank fighter, the admin can go onto their page and edit. 
+//On the individual fighter editing page, when the admin clicks add fight adds a blank fight to the fighter list that you can edit with dropdown boxes and 
+
+SUBROUTINE addFighter do 
+    SQL("INSERT INTO Fighters (Name, WeightClass, Birthdate, Gym, EloRating, Volatility, RatingDeviation) VALUES ('John Smith','Lightweight','1987-01-01','gym',1500,350,200)")
+end

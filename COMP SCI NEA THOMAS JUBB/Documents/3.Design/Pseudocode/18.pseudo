@@ -1,0 +1,31 @@
+//When the user clicks a belt button on the edit fighter list page, a list of belts automatically comes up with each holder and division shown (auto-filled from ID)
+//The admin can add new belts 
+//The admin can delete belts
+//If a belt is deleted, the title fight status of the belt's fights will be turned to retired
+//The admin can edit the holder of the belt
+SUBROUTINE openBeltsPage do 
+    makeTable("SELECT * FROM Belts",beltsTable,"BeltID,Weight/Name,FighterID")
+end
+SUBROUTINE addBelt do 
+    SQL("INSERT INTO Belts(Weight/Name,FighterID) VALUES (Blank,NULL)")
+    makeTable("SELECT * FROM Belts",beltsTable,"BeltID,Weight/Name,FighterID")
+end
+SUBROUTINE selectedBelt(index) do 
+    global currentBeltTableIndex=index
+end
+SUBROUTINE deleteBelt do 
+    global currentBeltTableIndex
+    beltID=currentBeltTableIndex[beltID]
+    SQL("DELETE FROM Belts WHERE beltID="+beltID+";")
+    titlesToRetire=SQL("SELECT FightID from Fights where Title="+currentBeltTableIndex[weight]+";")
+    for i terms in length(timeToRetire) do 
+        SQL("UPDATE Fights SET Title='RETIRED' WHERE fightID="+titlesToRetire[i]+";")
+    end
+    makeTable("SELECT * FROM Belts",beltsTable,"BeltID,Weight/Name,FighterID")
+end 
+//subroutine done on text edit
+SUBROUTINE editBeltHolder do 
+    wait 20 SECONDS
+    global selectedBelt
+    SQL("UPDATE Belts Set FighterID="+getTableText(currentBeltTableIndex[weight])+" WHERE beltID="+currentBeltTableIndex[beltID]+" ;")
+end

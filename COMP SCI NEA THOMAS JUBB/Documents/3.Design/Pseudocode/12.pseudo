@@ -1,0 +1,69 @@
+Insert every event since the given date into the database
+Insert every fight since a given date and
+Add it to the database 
+
+SUBROUTINE scrapeEvents(startDate) do 
+    finished=False
+    event=startDate
+    events=[]
+    While finished=False do 
+        eventdata=ufcScrape.getEventData(startDate)
+        if eventdate exists do
+            events.append[]
+            events[ID,event]=eventdata[ID]
+            events[name,event]=eventdata[name]
+            events[city,event]=eventdata[city]
+            events[date,event]=eventdata[date]
+            event=event+1
+        end
+        if eventdata does not exist do 
+            finished=True
+        end
+    end
+    return events
+end
+SUBROUTINE ufcScrape(startDate) do 
+    events=scrapeEvents(startDate)
+    for i terms in length of events do 
+        SQL("INSERT INTO Events (name,date,location) VALUES "events[0],events[1],events[2],events[3]";")
+        fightData=ufcScrape.getFightData(eventName=events[0])
+        for x terms in length of fightData do 
+            //get fight data
+            fights.append[]
+            fighterFights.append[]
+            fights[fightID,x]=fightData[fightID,x]
+            fights[eventID,x]=events[i]
+            fights[Method,x]=fightData[result,x]
+            fights[endRound,x]=fightData[endRound,x]
+            fights[endTime,x]=fightData[endTime,x]
+            if fightData[titleFight,x]=True do 
+                fights[titleFight,x]=fightData[weightclass,x]
+            end
+            sql("INSERT INTO Fights (FightID,EventID,Method,EndRound,EndTime,Title)
+                VALUES ("fights[fightID,x]+fights[eventID,x]+fights[Method,x]+fights[endRound,x]+fights[endTime,x]+fights[titleFight,x]");")
+            //get fighterfights data
+            fighterA=fightData[fighter1,x]
+            fighterB=fightData[fighter2,x]
+            if fightdata[winner,x]=fighterA do 
+                sql("INSERT INTO FighterFights (FighterID,FightID,Corner,Result) VALUES "
+                fighterA,fights[fightID,x],Red,Win";")
+                sql("INSERT INTO FighterFights (FighterID,FightID,Corner,Result) VALUES "
+                fighterB,fights[fightID,x],Blue,Loss";")
+            end
+            if fightdata[winner,x]=fighterB do 
+                sql("INSERT INTO FighterFights (FighterID,FightID,Corner,Result) VALUES "
+                fighterA,fights[fightID,x],Red,Loss";")
+                sql("INSERT INTO FighterFights (FighterID,FightID,Corner,Result) VALUES "
+                fighterB,fights[fightID,x],Blue,Win";")
+            end
+            //get fighter data
+            fighterData=getFightData(FighterID=FighterA)
+            sql("INSERT INTO fighters (FighterID,Name,WeightClass,Birthdate,Gym,EloRating,Volatility,RatingDeviation)
+            VALUES "fighterData[name]+fighterData[weightclass]+fighterData[Birthdate]+fighterData[Gym]+1500+300+450";")
+            fighterData=getFightData(FighterID=FighterB)
+            sql("INSERT INTO fighters (FighterID,Name,WeightClass,Birthdate,Gym,EloRating,Volatility,RatingDeviation)
+            VALUES "fighterData[name]+fighterData[weightclass]+fighterData[Birthdate]+fighterData[Gym]+1500+300+450";")
+        end
+    end
+end
+

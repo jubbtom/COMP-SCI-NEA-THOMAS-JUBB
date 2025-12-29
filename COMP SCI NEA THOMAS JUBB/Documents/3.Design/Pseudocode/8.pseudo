@@ -1,0 +1,31 @@
+Calculate the fighter of the fighter we’re looking at’s division’s score. 
+Find all fighters with ELO equal to or greater than the ELO of the 10th best fighter in the division, and put that result into a table 
+
+//assumes profileID is a global
+def top10Opponents(fighterID) do 
+    opponentsList=SQL("SELECT Name FROM Fighters WHERE FighterID=(SELECT FighterID FROM FighterFights
+    WHERE FighterFights.FightID=(
+    SELECT FighterID From FighterFights WHERE FightID=(SELECT FightID from FighterFights WHERE FighterID="+fighterID+") AND NOT FighterID="+fighterID+");")
+    fighterWeight=SQL("SELECT WeightFROM Fighters WHERE FighterID="+FighterID+";")
+    top10division=SQL("SELECT Name FROM Fighters WHERE Weight="+fighterWeight+"; ORDER BY EloRating LIMIT 9")
+    top10OpponentsList=[]
+    for x terms from 0 to 9 do 
+        for y terms for length(opponentsList) do 
+            if top10division[x]=opponentsList[y] do 
+                top10OpponentsList.append(opponentsList[y])
+            end
+        end
+    end
+end
+
+
+
+
+
+SELECT Fighters.Name AS Opponent_Name,Fighters.ELORating
+FROM FighterFights,Fighters
+INNER JOIN Fighters ON FighterFights.OpponentID = Fighters.FighterID
+WHERE FighterFights.FighterID = ?  -- Filter for the specific fighter whose record you're viewing
+GROUP BY Fighters.FighterID, Fighters.Name, Fighters.ELORating
+ORDER BY "Fighters.ELORating DESC  -- Sort by the opponent's ELO rating in descending order
+LIMIT 10;

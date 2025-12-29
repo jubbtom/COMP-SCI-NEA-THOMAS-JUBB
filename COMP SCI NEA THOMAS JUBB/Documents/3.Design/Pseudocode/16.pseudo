@@ -1,0 +1,26 @@
+SELECT all fights where the length is equal to or less than 1s, 
+and put all of these into the same 2d list as the errors with their cell structured as [[anomaly, table, id] …]
+For each year, SELECT by unioning and grouping the fighters who have fought more than 12 times in a year, 
+and put all of these into the error list, structured in 
+[[anomaly, table, id] …]
+
+SUBROUTINE anomalyCheck do 
+    impossibleFights=SQL("SELECT FightID FROM Fights WHERE EXTRACT(SECONDS FROM EndTime)=<1 AND EXTRACT(MINUTES FROM EndTime)=0;")
+    if impossibleFights exists do 
+        dataErrors.append(["Anomaly","Fights",FightID])
+    end
+    minDate=SQL("SELECT MIN(EXTRACT(YEAR FROM Date)) FROM Events;")
+    maxDate=SQL("SELECT MAX(EXTRACT(YEAR FROM Date)) FROM Events;")
+    fighterIdList=SQL("SELECT FighterID FROM Fighters;")
+    for year terms in range of minDate to maxDate do 
+        for fighter terms in range of length(fighterIdList) do 
+            fightCount=("SELECT COUNT(*) FROM FighterFights
+            WHERE FighterID="+fighterIdList[fighter]+" AND FighterFights.FightID=Fights.FightID AND Fights.EventID=Events.EventID
+            AND Events.EXTRACT(YEAR FROM Date)="+year+";")
+            if fightCount >= 12 do 
+                dataErrors.append(["Anomaly","FighterFights",fighterIDList])
+            end
+        end
+    end
+end
+

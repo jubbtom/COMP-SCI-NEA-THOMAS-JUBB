@@ -1,0 +1,70 @@
+#10.1
+Username=input()
+Password=input()
+signUpButton.onClick(
+    Result = SQL("SELECT 1 FROM dbo.Users WHERE Username = "+Username+";")
+    If Result do 
+        OUTPUT "Username already exists"
+        Return 
+    end
+    salt = randomBytes(16)
+    hash = hash(pbkdf2_hmac,function=sha256,toEncode=Password,salt=salt,Iterations=100000)
+    base64salt = base64encode(salt)
+    base64hash = base64encode(hash)
+    hashedPassword = base64salt+base64hash
+    SQL("INSERT INTO Users (Username, HashedPassword,SubOpinion,KoOpinion,DecisionOpinion,isAdmin) 
+         VALUES ("+Username+", "+Password+",1,1,1,0);")
+    sessionUsername = Username
+    LOGIN()
+)
+#10.2
+storedAccount = SQL("SELECT * FROM dbo.Users WHERE Username = "+Username+";")
+Username=input()
+Password=input()
+if storedAccount do
+    storedPassword=storedAccount[0]
+    base64salt and base64hash = split(storedPassword AT ":")
+    decodedHash = base64decode(base64hash)
+    decodedSalt = base64decode(base64salt)
+    newhash = hash = hash(pbkdf2_hmac,function=sha256,toEncode=Password,salt=decodedSalt,Iterations=100000)
+    if decodedHash = newhash do
+        LOGIN()
+    end
+    if decoded != newhash do
+        OUTPUT "Login unsuccessful"
+    end
+end
+#10.3
+On LOGIN() do
+    sessionID=SQL("SELECT userID FROM dbo.Users WHERE Username = "+Username+";")
+end
+#10.4
+On LOGIN() do
+    isAdmin=SQL("SELECT isAdmin FROM dbo.Users WHERE Username = "+Username+";")
+end
+#10.5
+KoOpinion=0
+SubOpinion=0
+DecisionOpinion=0
+koStars=[star1,star2,star3,star3,star4]
+subStars=[star1,star2,star3,star3,star4]
+decStars=[star1,star2,star3,star3,star4]
+submitSurveyButton.onClick(
+    for i FROM 1 to koStars do 
+      if i.beenClicked=True
+       KoOpinion=i
+       return
+    end
+    for i FROM 1 to subStars do 
+      if i.beenClicked=True
+       SubOpinion=i
+       return
+    end
+    for i FROM 1 to decStars do 
+      if i.beenClicked=True
+       DecisionOpinion=i
+       return
+    end
+    SQL("UPDATE dbo.Users SET SubOpinion = "+SubOpinion+", KoOpinion = "+KoOpinion+", DecisionOpinion = "+DecisionOpinion+"
+    WHERE Username="+Username+";")
+)

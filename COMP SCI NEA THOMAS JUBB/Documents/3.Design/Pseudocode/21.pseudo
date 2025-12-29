@@ -1,0 +1,10 @@
+#21 
+viewAsUserButton.onClick do 
+    navigate(leaderboard)
+end
+#21.2
+if isAdmin = True do
+    resize(oddsCheckerButton,length=50%)
+    move(oddsCheckerButton,x=50%)
+    show(manageListButton)
+end

@@ -1,0 +1,4 @@
+
+validate and check for inconsistency and redundancy and anomalies
+accurate search algorithm
+good navigation UI (3 clicks)

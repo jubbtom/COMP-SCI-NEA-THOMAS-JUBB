@@ -1,0 +1,12 @@
+Star subroutine
+Hash comparison on login???
+Change the session token to the username
+Threaded http request
+Validate that all fights are linked
+Implied matrix
+Deal with combo boxes
+Different odds formula
+Added clear button and return button to odds calculations
+Rearranged odds calculation
+Average fighter algorithms
+INCLUDE APPROVAL SCORE IN UI DIAGRAMS

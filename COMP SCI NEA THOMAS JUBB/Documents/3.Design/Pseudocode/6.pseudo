@@ -1,0 +1,98 @@
+//   Find the picture of the fighter from the fighter variable and put it onto a widget 
+//   Find and display fights where the fighter we’re looking at has fought. 
+//   Calculate and display the fighter's win/loss streak 
+//   Calculate total wins/losses/draws and their individual totals (i.e. total ko losses, total sub wins, etc.) and display in a table 
+//   Calculate the percentage win rate and percentage finish rate for the user
+//   Find belts held by the fighter and display them to the user 
+leaderboard.onDoubleClick(
+    //This is subproblem 5
+    profileID=index[0]
+    fighterProfileInit(profileID)
+)
+SUBROUTINE fighterProfileInit(profileID) do
+    fighterStats=SQL("SELECT * FROM Fighters WHERE FighterID="+ProfileID+";")
+    try to do 
+        response=httpGet(fighterStats[8])
+        if "image" isn't in response do 
+            OUTPUT "NOT AN IMAGE"
+        else do 
+            image=response.content 
+            fighterProfileImage.loadImage(image)
+        end
+    end
+    On Exception do 
+        OUTPUT Exception
+    end
+    pastFightsQuery="
+    SELECT 
+        Fighters.Name AS opponentName
+        Events.Name AS eventName
+        Fights.Method,Fights.EndRound,Fights.EndTime
+    FROM
+        FighterFights,Fights,Events
+    INNER JOIN
+        Fighters ON FighterFights.OpponentID = Fighters.FighterID
+    INNER JOIN
+        Fights ON FighterFights.FightID = Fights.FightID
+    INNER JOIN 
+        Events ON Fights.EventID = Events.EventID
+    WHERE 
+        FighterFights.FighterID = "+ProfileID+"
+    ORDER BY
+        Events.Date DESC;
+    "
+    makeTable(pastFightsQuery,pastFightsTable,["Opponent","Event","Result","Round","Time"])
+    totalWins=sql("SELECT SUM(CASE WHEN Result = 'W' THEN 1 ELSE 0 END) AS totalWins FROM FighterFights WHERE FighterID="+ProfileID+";",)
+    totalLosses=sql("SELECT SUM(CASE WHEN Result = 'L' THEN 1 ELSE 0 END) AS totalWins FROM FighterFights WHERE FighterID="+ProfileID+";",)
+    totalDraws=sql("SELECT SUM(CASE WHEN Result = 'D' OR Result = 'NC' THEN 1 ELSE 0 END) AS totalWins FROM FighterFights WHERE FighterID="+ProfileID+";",)
+    pastFights=SQL(pastFightsQuery)
+    resultChanged=False
+    winStreak=False
+    lossStreak=False
+    inc=1
+    while resultChanged = False do 
+        if pastFights[result,inc] = pastFights[result,inc-1] do 
+            if pastFights[result,inc] = "W" do 
+                winStreak=True
+                inc=inc+1
+            end
+            else do 
+                lossStreak=True
+                inc=inc+1
+            end
+        end
+        else do 
+            resultChanged=True
+        end
+    end
+    totalSubs=SQL("SELECT COUNT(Fights.FightID) FROM FighterFights,Fights WHERE 
+                   Fights.Result='Win' AND FighterFights.Result='SUB' AND FighterFights.FightID=Fights.FightID AND FighterFights.FighterID="+ProfileID+";")
+    totalKos=SQL("SELECT COUNT(Fights.FightID) FROM FighterFights,Fights WHERE 
+                   Fights.Result='Win' AND FighterFights.Result='KO' AND FighterFights.FightID=Fights.FightID AND FighterFights.FighterID="+ProfileID+";")
+    totalDec=SQL("SELECT COUNT(Fights.FightID) FROM FighterFights,Fights WHERE 
+                   Fights.Result='Win' AND FighterFights.Result='DEC' AND FighterFights.FightID=Fights.FightID AND FighterFights.FighterID="+ProfileID+";")
+    totalFights=totalWins+totalDraws+totalLosses
+    winRate=(100/totalFights)*totalWins
+    finishRate=(100/totalFights)*(totalSubs+totalKos) 
+    
+end  
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+end

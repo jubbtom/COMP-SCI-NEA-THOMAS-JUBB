@@ -1,0 +1,29 @@
+SUBROUTINE entertainmentScore(fighterID,UserID) do 
+    averages=[0,0,0]
+    fighterAverages=[0,0,0]
+    entertainmentScore=100
+    totalFights=SQL("SELECT COUNT(*) FROM Fights;")
+    totalSubs=SQL("SELECT COUNT(*) FROM Fights WHERE Method=SUB;")
+    totalDecs=SQL("SELECT COUNT(*) FROM Fights WHERE Method=DEC;")
+    totalKos=SQL("SELECT COUNT(*) FROM Fights WHERE Method=KO;")
+    averages[0]=(totalSubs/totalFights)*100
+    averages[1]=(totalDecs/totalFights)*100
+    averages[2]=(totalKos/totalFights)*100
+    fighterTotalFights=SQL("SELECT COUNT(*) FROM Fights WHERE Fights.FightID=FighterFights.FightID AND FighterFights.FighterID="+fighterID+";")
+    fighterTotalSubs=SQL("SELECT COUNT(*) FROM Fights WHERE Method=SUB AND Fights.FightID=FighterFights.FightID AND FighterFights.FighterID="+fighterID+";")
+    fighterTotalDecs=SQL("SELECT COUNT(*) FROM Fights WHERE Method=DEC AND Fights.FightID=FighterFights.FightID AND FighterFights.FighterID="+fighterID+";")
+    fighterTotalKos=SQL("SELECT COUNT(*) FROM Fights WHERE Method=KO AND Fights.FightID=FighterFights.FightID AND FighterFights.FighterID="+fighterID+";")
+    fighterAverages[0]=(fighterTotalSubs/fighterTotalFights)*100
+    fighterAverages[1]=(fighterTotalDecs/fighterTotalFights)*100
+    fighterAverages[2]=(fighterTotalKos/fighterTotalFights)*100
+    userOpinions=SQL("SELECT SubOpinion,DecisionOpinion,KoOpinion FROM Users WHERE UserID="+UserID+"")
+    for i terms in range 0 to 2 do
+        if fighterAverages[i]>averages[i] do 
+            entertainmentScore=entertainmentScore-(8.325*(5-userOpinions[i]))
+        end
+    end
+    return entertainmentScore
+end
+SUBROUTINE fightEntertainmentScore(fighterAID,fighterBID,UserID) do 
+    return (entertainmentScore(fighterAID,userID),entertainmentScore(fighterBID,userID))/2
+end

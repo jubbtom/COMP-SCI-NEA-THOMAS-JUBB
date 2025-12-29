@@ -1,0 +1,26 @@
+#17.1
+function navigate(toNavigate) {
+    page is global
+    pages=[
+        fighterProfiles,
+        leaderboard,
+        login,
+        modifyFighter,
+        modifyFighterList,
+        oddsPredictor,
+        survey
+    ]
+    for i FROM 1 to length(pages) do
+        hidePage(pages[i])
+    end
+    pages[toNavigate].show
+    page=pages[toNavigate]
+}
+#17.2 //Should be present in some way or form in every user interaction element
+if page = specificPage do
+    function()
+end
+//Or it could be present as
+if page != specificPage do
+    return
+end

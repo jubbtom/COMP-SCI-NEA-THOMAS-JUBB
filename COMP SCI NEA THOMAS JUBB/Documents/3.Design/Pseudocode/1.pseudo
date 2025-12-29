@@ -1,0 +1,101 @@
+#1.1 "Do a search of all the fights in the database, ordered from oldest to newest" Y
+#1.2 "Start with the oldest fight, get fighter A's ELO rating and put it into a variable"Y
+#1.3 "Convert Fighter A and B's ELO and Rating Deviation to the Glicko-2 scale"
+#1.4 "Update Rating Deviation based on inactivity"
+#1.5 "Calculate the impact of the fight"
+#1.6 "Calculate the expected score of the fight"
+#1.7 "Calculate the variance of the fight"
+#1.8 "Figure out the rating improvement from the fight"
+#1.9 "Figure out the volatility of ratings"
+#1.10 "Update rating deviation"
+#1.11 "Update main rating"
+#1.12 "Reconvert RD into ELO from Glicko's scale"
+#1.13 "Repeat in reverse"
+#1.14 "Repeat for the next oldest fight"
+#1.15 "Display fighter stats to User/Admin sorted by ELO"
+assumes pi and e are known
+SUBROUTINE CalcElo(FighterA,FighterB,Fight) do
+    Q=ln(10)/400
+    Fighter=("SELECT * FROM Fighters WHERE FighterID="+FighterA+";")
+    global beforeElo=Fighter[Elo]
+    global beforeRD=Fighter[ratingDeviation]
+    global beforeVolatility=Fighter[volatility]
+    FightersOp=("SELECT * FROM Fighters WHERE FighterID="+FighterB+";")
+    opponentElo=(FightersOp[Elo]-1500)/173.7178
+    opponentRD=FightersOp[ratingDeviation]/173.7178
+    opponentVolatility=FightersOp[volatility]
+    internalELO=(beforeElo-1500)/173.7178
+    internalRD=beforeRD/173.7178
+    fighterFoughtIn=SQL("SELECT * FROM Fights
+                       WHERE FighterFights.FightID=Fights.FightID AND FighterFights.FightID"+FighterA+";")
+    lastFightID=((fighterFoughtIn.index(fighterFoughtIn=Fight))-1)
+    lastFightDate=SQL("SELECT Date from Events WHERE FightID="+lastFightID+";")
+    FightDate=SQL("SELECT Date from Events WHERE FightID="+Fight+";")
+    inactivityTime=dateChangeDays(FightDate-lastFightDate)
+    inactivityTime=inactivityTime/30
+    internalRD=((internalRD^2)+(beforeVolatility^2)+inactivityTime)^0.5
+    impact=(1+((3*(Q^2)*opponentElo)/(pi^2)))^-0.5
+    expectedScore=(1+(e^(-impact*(internalELO-opponentElo))))^-1
+    variance=((impact*2)*expectedScore*(1-expectedScore))^-1
+    results=SQL("SELECT Result FROM FighterFights WHERE fighterID="+FighterA+" AND fightID="+Fight+";")
+    if results="W" 
+        result=1
+    elif results="L"
+        result=0
+    else do 
+        result=0.5
+    end
+    ratingImprovement=variance*(impact*(result-expectedScore))
+    beforeVolatilitySquared=beforeVolatility^2
+    ratingDeviationSquared=ratingDeviation^2
+    searchTolerance=0.000001
+    SUBROUTINE volatilityFunction(x) do
+        term1Numerator=(e^x)*((ratingImprovement^2)-(internalRD^2)-variance-(e^x))
+        term1Denominator=2*(((internalRD^2)+variance+(e^x))^2)
+        term2Numerator=x-ln(beforeVolatilitySquared)
+        term2Denominator=0.5^2
+        term1=term1Numerator/term1Denominator
+        term2=term2Numerator/term2Denominator
+        return term1-term2
+    end
+    lowerBoundVol=ln(beforeVolatilitySquared)
+    higherBoundVol=lowerBoundVol
+    While volatilityFunction(higherBoundVol)<0 do 
+        higherBoundVol=higherBoundVol+0.5
+    end
+    while higherBoundVol-lowerBoundVol > searchTolerance do
+        midpoint=(lowerBoundVol+higherBoundVol)/2
+        volMidpoint=volatilityFunction(midpoint)
+        volLowerBound=volatilityFunction(volLowerBound)
+        if volMidpoint*lowerBoundVol<0 Do
+            higherBoundVol=midpoint
+        end
+        else do
+            lowerBoundVol=midpoint
+        end
+    end
+    newVolatility=e^(lowerBoundVol/2)
+    interimRatingDeviation=((beforeRD^2)+(newVolatility)^2)^0.5
+    newRatingDeviation=((interimRatingDeviation^-2)+(variance^-1))^-0.5
+    newElo=beforeElo+(newRatingDeviation*(impact*(result-expectedScore)))
+    RAISE EXCEPTION IF ELO<=0 OR ELO>=3000 "Elo calculation error"
+    RAISE EXCEPTION IF newVolatility<=0 OR newVolatility>=1 "Volatility calculation error"
+    RAISE EXCEPTION IF newRatingDeviation<=0 OR newRatingDeviation>=350 "Rating Deviation calculation error"
+    Return newVolatility,newRatingDeviation,newElo
+
+
+ARRAY Fights=SQL("SELECT Fights.FightID        
+                FROM Fights, Events
+                INNER JOIN Events ON Fights.EventID = Events.EventID  
+                ORDER BY Events.EventDate Asc")
+FOR i TERMS IN LENGTH OF Fights do 
+    FighterA=SQL("SELECT FighterID FROM FighterFights WHERE FightID="+Fights[FightID,i]+"AND Corner=Red;")
+    FighterB=SQL("SELECT FighterID FROM FighterFights WHERE FightID="+Fights[FightID,i]+"AND Corner=Blue;") 
+    CalcElo(FighterA,FighterB,Fights[FightID,i])
+    SQL("UPDATE Fighters SET ratingDeviation="+newRatingDeviation+",volatility="+newVolatility+",EloRating="+newElo+", WHERE FighterID="+FighterA+";")
+    CalcElo(FighterB,FighterA,Fights[FightID,i])
+    SQL("UPDATE Fighters SET ratingDeviation="+newRatingDeviation+",volatility="+newVolatility+",EloRating="+newElo+", WHERE FighterID="+FighterA+";")
+end
+//The leaderboard should just sort by elo from there
+
+    
