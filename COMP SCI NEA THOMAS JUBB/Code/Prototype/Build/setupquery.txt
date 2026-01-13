@@ -1,0 +1,6 @@
+CREATE TABLE Approvals (
+	approvalID int PRIMARY KEY NOT NULL,
+	userID int,
+	fighterID int,
+	rating bit
+);

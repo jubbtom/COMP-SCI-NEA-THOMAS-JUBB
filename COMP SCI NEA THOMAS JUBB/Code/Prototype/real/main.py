@@ -117,7 +117,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.modifyFighterReturn.clicked.connect(lambda:self.loadModifyFighter())
         self.ui.modifyFighterAddFight.clicked.connect(lambda:self.modifyFighterAddFight())
         self.ui.modifyFighterDeleteFight.clicked.connect(lambda:self.modifyFighterDeleteFight())
-        self.ui.modifySubmitButton.clicked.connect(lambda:self.updateEloRatings())
         ##setup modifyfighter tooltip system
         self.fighterNameMap = dict(self.connect("SELECT FighterID, Name FROM Fighters;", "many", None) or []) #dictionary so i don't have to repeatedly call for the sql
         self.ui.modifyFighterFightsTable.setMouseTracking(True)
@@ -298,148 +297,122 @@ class MainWindow(QtWidgets.QMainWindow):
         print("Adding to edit queue:",row,col)
     ##submit fighter fights table edit
     def submitFighterFights(self):
-        global fighterId, fightsTablePendingEdits
-
-        model = self.ui.modifyFighterFightsTable.model()
+        global fighterId
+        global fightsTablePendingEdits
+        model=self.ui.modifyFighterFightsTable.model()
         if model is None:
             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No model")
             return
-
-        # de-dupe edits (your itemChanged fires a lot)
-        uniqueEdits = list({(r, c) for r, c in fightsTablePendingEdits})
-        fightsTablePendingEdits.clear()
-
-        for (row, col) in uniqueEdits:
-            # ignore hidden ID columns
-            if col < 3:
-                continue
-
+        #Edits arranged into their columns
+        columns=[
+            ["FighterFightsID","FighterFights"],#profile ff id 
+            ["FightID","FighterFights"],#prof fight id
+            ["FighterFightsID","FighterFights"],#opp fighterfights id
+            ["FighterID","FighterFights"],#opponent id 
+            ["EventID","Fights"],#Event id
+            ["Result","FighterFights"],#fight result
+            ["Method","Fights"],#fight end method
+            ["EndRound","Fights"],#fight endround
+            ["EndTime","Fights"],#fight endtime
+            ["Title","Fights"],#fight endtitle
+        ]
+        rowCount=model.rowCount()
+        for edit in range(len(fightsTablePendingEdits)):
+            row=fightsTablePendingEdits[edit][0]
+            col=fightsTablePendingEdits[edit][1]
+            if col < 2:
+                QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Col is out of range")
+                return
             cell = model.item(row, col)
             value = None if cell is None else cell.text()
-
-            if value is not None and (value.strip() == "" or value.strip() == "None"):
-                value = None
-
-            profileFFID = model.item(row, 0).text()  # hidden
-            fightID     = model.item(row, 1).text()  # hidden
-
-            # -------------------------
-            # COL 3 = OpponentID (editable)
-            # -------------------------
-            if col == 3:
-                newOppID = value
-
-                # allow clearing opponent
-                if newOppID is None:
-                    self.connect(
-                        "DELETE FROM dbo.FighterFights WHERE FightID=? AND FighterID<>?;",
-                        "none",
-                        (fightID, fighterId)
-                    )
-                    continue
-
-                # must be int and not same as profile fighter
-                try:
-                    newOppID_int = int(newOppID)
-                except ValueError:
-                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "OpponentID must be a number (or None).")
-                    continue
-
-                if str(newOppID_int) == str(fighterId):
-                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "OpponentID can't equal the current fighter.")
-                    continue
-
-                # opponent result should mirror profile result (col 5)
-                profileResult = model.item(row, 5).text() if model.item(row, 5) else None
-                oppResult = None
-                if profileResult not in (None, "", "None"):
-                    oppResult = self.oppositeResult(profileResult)
-
-                # remove any existing opponent rows for that fight, then insert the new one
-                self.connect(
-                    "DELETE FROM dbo.FighterFights WHERE FightID=? AND FighterID<>?;",
-                    "none",
-                    (fightID, fighterId)
-                )
-                self.connect(
-                    "INSERT INTO dbo.FighterFights (FightID, FighterID, Corner, Result) VALUES (?, ?, NULL, ?);",
-                    "none",
-                    (fightID, newOppID_int, oppResult)
-                )
-                continue
-
-            # -------------------------
-            # COL 5 = Result (editable)
-            # -------------------------
-            if col == 5:
-                newResult = value
-
-                # update profile fighterfights row
-                self.connect(
-                    "UPDATE dbo.FighterFights SET Result=? WHERE FighterFightsID=?;",
-                    "none",
-                    (newResult, profileFFID)
-                )
-
-                # update opponent row (if it exists)
-                oppResult = None
-                if newResult not in (None, "", "None"):
-                    oppResult = self.oppositeResult(newResult)
-
-                self.connect(
-                    "UPDATE dbo.FighterFights SET Result=? WHERE FightID=? AND FighterID<>?;",
-                    "none",
-                    (oppResult, fightID, fighterId)
-                )
-                continue
-
-            # -------------------------
-            # FIGHTS TABLE EDITS
-            # col 4 EventID, col 6 Method, col 7 Round, col 8 Time, col 9 Title
-            # -------------------------
-            if col == 4:  # EventID
-                if value is None:
-                    eventVal = None
+            if row is None or col is None or value is None:
+                QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Row/Col/Value is None")
+                return
+            model.item(row,col).text()
+            if columns[col][1]=="FighterFights": #Updates opponent and result data
+                print("Setting value",value,"to",columns[col][1])
+                key=model.item(row,0).text()
+                print("FighterFights Key is ",key)
+                opponentKey=model.item(row,2).text()
+                opponentFighterFightsKey=model.item(row,3).text()
+                FighterFightsKey=model.item(row,0).text()
+                oppositeResult=self.oppositeResult(str(value))
+                if opponentKey is None or opponentKey=="" or opponentKey=="None":
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No opponent key")
+                if oppositeResult is None:
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Bad result")
+                if columns[col][0]=="FighterID":
+                    #updates opponent on fighterfights
+                    #firstly, remove the old opponent's fighterfights
+                    FighterFights=self.connect("SELECT * FROM FighterFights WHERE FighterFights.FighterFightsID = ?;","one",FighterFightsKey)
+                    for record in FighterFights:
+                        if record is None:
+                            record="None"
+                    query="""
+                    DELETE FROM FighterFights
+                    WHERE FighterFights.FighterFightsID = ?
+                    """
+                    self.connect(query,"none",(opponentFighterFightsKey,))
+                    #then add the new opponent's fighterfights
+                    query="""
+                    INSERT INTO FighterFights
+                    VALUES (?,?,?,?)
+                    """
+                    self.connect(query,"none",(value,FighterFights[1],self.oppositeResult(FighterFights[2]),FighterFights[3]))
+                if columns[col][0]=="Result":
+                    #updates result for both fighterfights tables
+                    #firstly, update the result for the profile fighter
+                    query="""
+                    UPDATE FighterFights
+                    SET Result=?
+                    WHERE FighterFightsID=?;
+                    """
+                    self.connect(query,"none",(value,key))
+                    #then, also update the opponent fighter's result
+                    query="""
+                    UPDATE FighterFights
+                    SET Result=?
+                    WHERE FighterFightsID=?;
+                    """
+                    self.connect(query,"none",(oppositeResult,opponentKey))
                 else:
-                    try:
-                        eventVal = int(value)
-                    except ValueError:
-                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "EventID must be a number (or None).")
-                        continue
-                self.connect("UPDATE dbo.Fights SET EventID=? WHERE FightID=?;", "none", (eventVal, fightID))
-                continue
-
-            if col == 6:  # Method
-                self.connect("UPDATE dbo.Fights SET Method=? WHERE FightID=?;", "none", (value, fightID))
-                continue
-
-            if col == 7:  # EndRound
-                if value is None:
-                    roundVal = None
-                else:
-                    try:
-                        roundVal = int(value)
-                    except ValueError:
-                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Round must be a number (or None).")
-                        continue
-                self.connect("UPDATE dbo.Fights SET EndRound=? WHERE FightID=?;", "none", (roundVal, fightID))
-                continue
-
-            if col == 8:  # EndTime (expects HH:MM:SS)
-                t = value
-                if t is not None and len(t) == 5:  # "HH:MM" -> "HH:MM:00"
-                    t = t + ":00"
-                self.connect("UPDATE dbo.Fights SET EndTime=? WHERE FightID=?;", "none", (t, fightID))
-                continue
-
-            if col == 9:  # Title
-                self.connect("UPDATE dbo.Fights SET Title=? WHERE FightID=?;", "none", (value, fightID))
-                continue
-        self.submitProfile()
-        # refresh table after edits
-        self.showProfileAdmin(self.ui.modifyFighterListTable.currentIndex())
-          # IMPORTANT: call it, don’t just reference it
-
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No parametised operation for fighterfights edit")       
+            elif columns[col][1]=="Fights": #Updates fight data
+                print("Setting value",columns[col][0],"to",value)
+                key=model.item(row,1).text()
+                print("Fight Key is ",key)
+                query="UPDATE Fights SET "+columns[col][0]+"=? WHERE FightID=?;"
+                self.connect(query,"none",(value,key))
+        query="""DECLARE @FighterID INT = ?;
+        SELECT
+        FighterFights.FighterFightsID AS [FighterFightsID],
+        FighterFights.FightID         AS [FightID],
+        (
+        SELECT TOP 1 FighterFights.FighterFightsID
+        FROM FighterFights
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentFighterFightsID],
+        (
+        SELECT TOP 1 FighterFights.FighterID
+        FROM FighterFights
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentID],
+        Fights.EventID,
+        FighterFights.Result AS [Result],
+        Fights.Method AS [Method],
+        Fights.EndRound AS [Round],
+        CONVERT(char(5), Fights.EndTime, 108) AS [Time],
+        Fights.Title
+        FROM FighterFights
+        JOIN Fights  ON Fights.FightID  = FighterFights.FightID
+        JOIN Events  ON Events.EventID  = Fights.EventID
+        WHERE FighterFights.FighterID = @FighterID
+        ORDER BY Fights.FightID DESC;
+        """
+        self.genTable((query,"many",(fighterId)),headers=["FighterFightsID","FightID","OppFFID","Opponent ID","EventID","Result","Method","Round","Time","Title"],table=self.ui.modifyFighterFightsTable,isFightsTable=True)
+        self.submitProfile
          
     #Request Subroutines
     ##Load image and pixmap onto an element
@@ -715,18 +688,12 @@ class MainWindow(QtWidgets.QMainWindow):
         #Load record
         fighterFightData=self.connect("SELECT * FROM FighterFights WHERE FighterID=?;","many",(modFighterCurrentId,))
         print(fighterFightData)
-        fighterFightData = self.connect(
-    "SELECT Result FROM FighterFights WHERE FighterID=?;",
-    "many",
-    (modFighterCurrentId,)  # or (modFighterCurrentId,)
-)
-        for (result,) in fighterFightData:
-            if result == "W":
-                TotalWins += 1
-            elif result == "L":
-                TotalLosses += 1
-            elif result == "D" or result == "NC":
-                TotalDraws += 1
+        for i in range(len(fighterFightData)):
+            if fighterFightData[i][3] == "Loss":
+                TotalLosses=TotalLosses+1
+            if fighterFightData[i][3] == "Win":
+                TotalWins=TotalWins+1
+            if fighterFightData[i][3] == "Draw":
                 TotalDraws=TotalDraws+1
         self.ui.modifyFighterListLosses.setText(str(TotalLosses))
         self.ui.modifyFighterListWins.setText(str(TotalWins))
@@ -909,7 +876,7 @@ class MainWindow(QtWidgets.QMainWindow):
     #Leaderboard subproblems
     ##Initialize leaderboard
     def initLeaderboard(self):
-        self.genTable(("SELECT FighterID,Name,WeightClass,Birthdate,Gym FROM Fighters ORDER BY EloRating DESC;","many",None),["FighterID","Name","Weight Class","Birthdate","Gym"],self.ui.leaderboardTableView)
+        self.genTable(("SELECT FighterID,Name,WeightClass,Birthdate,Gym FROM Fighters","many",None),["FighterID","Name","Weight Class","Birthdate","Gym"],self.ui.leaderboardTableView)
         self.ui.leaderboardTableView.setColumnHidden(0, True)
         self.ui.leaderboardFighterBelts.setText("")
         self.ui.leaderboardFighterRecord.setText("")
@@ -932,26 +899,23 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             self.loadImage(None,self.ui.leaderboardImage,"File","defaultpfp.png")
         #Load record
-        fighterFightData = self.connect(
-    "SELECT Result FROM FighterFights WHERE FighterID=?;",
-    "many",
-    (leaderboardCurrentId,)  # or (modFighterCurrentId,)
-)
-        for (result,) in fighterFightData:
-            if result == "W":
-                TotalWins += 1
-            elif result == "L":
-                TotalLosses += 1
-            elif result == "D" or result == "NC":
-                TotalDraws += 1
+        fighterFightData=self.connect("SELECT * FROM FighterFights WHERE FighterID=?;","many",(leaderboardCurrentId,))
+        print(fighterFightData)
+        for i in range(len(fighterFightData)):
+            if fighterFightData[i][3] == "Loss":
+                TotalLosses=TotalLosses+1
+            if fighterFightData[i][3] == "Win":
+                TotalWins=TotalWins+1
+            if fighterFightData[i][3] == "Draw":
+                TotalDraws=TotalDraws+1
         record=str(TotalWins)+"-"+str(TotalDraws)+"-"+str(TotalLosses)
         self.ui.leaderboardFighterRecord.setText(record)
         beltsList=self.connect("SELECT * FROM Belts WHERE FighterID=(SELECT FighterID FROM Fighters WHERE FighterID=?);","many",(leaderboardCurrentId,))
         if beltsList:
-                beltsText="Belts: "
-                for row in beltsList:
-                    beltsText=beltsText+str(row[1])+" "
-                self.ui.leaderboardFighterBelts.setText(beltsText)
+            beltsText="Belts: "
+            for row in beltsList:
+                beltsText=beltsText+str(row[1])+" "
+            self.ui.leaderboardFighterBelts.setText(beltsText)
         else:
             self.ui.leaderboardFighterBelts.setText("")
     ##Search for fighters in the leaderboard
@@ -998,49 +962,38 @@ class MainWindow(QtWidgets.QMainWindow):
         date = QDate.fromString(fighterData[3], "yyyy-MM-dd")
         self.ui.modifyFighterBirthday.setDate(date)
         #display fights
-        query = """
-        DECLARE @FighterID INT = ?;
-
+        query="""DECLARE @FighterID INT = ?;
         SELECT
-            FighterFights.FighterFightsID AS [FighterFightsID],
-            FighterFights.FightID         AS [FightID],
-
-            (SELECT TOP 1 FighterFights.FighterFightsID
-            FROM FighterFights
-            WHERE FighterFights.FightID = Fights.FightID
-            AND FighterFights.FighterID <> @FighterID
-            ORDER BY FighterFights.FighterFightsID) AS [OppFFID],
-
-            (SELECT TOP 1 FighterFights.FighterID
-            FROM FighterFights
-            WHERE FighterFights.FightID = Fights.FightID
-            AND FighterFights.FighterID <> @FighterID
-            ORDER BY FighterFights.FighterFightsID) AS [OpponentID],
-
-            Fights.EventID,
-            FighterFights.Result AS [Result],
-            Fights.Method        AS [Method],
-            Fights.EndRound      AS [Round],
-            CONVERT(char(8), Fights.EndTime, 108) AS [Time],
-            Fights.Title
+        FighterFights.FighterFightsID AS [FighterFightsID],
+        FighterFights.FightID         AS [FightID],
+        (
+        SELECT TOP 1 FighterFights.FighterFightsID
         FROM FighterFights
-        JOIN Fights ON Fights.FightID = FighterFights.FightID
-        LEFT JOIN Events ON Events.EventID = Fights.EventID
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentFighterFightsID],
+        (
+        SELECT TOP 1 FighterFights.FighterID
+        FROM FighterFights
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentID],
+        Fights.EventID,
+        FighterFights.Result AS [Result],
+        Fights.Method AS [Method],
+        Fights.EndRound AS [Round],
+        CONVERT(char(5), Fights.EndTime, 108) AS [Time],
+        Fights.Title
+        FROM FighterFights
+        JOIN Fights  ON Fights.FightID  = FighterFights.FightID
+        JOIN Events  ON Events.EventID  = Fights.EventID
         WHERE FighterFights.FighterID = @FighterID
         ORDER BY Fights.FightID DESC;
         """
-        self.genTable(
-            (query, "many", (fighterId,)),
-            headers=["FighterFightsID","FightID","OppFFID","OpponentID","EventID","Result","Method","Round","Time","Title"],
-            table=self.ui.modifyFighterFightsTable,
-            isFightsTable=True
-        )
-
-        # hide internal IDs but KEEP OpponentID + EventID visible
-        self.ui.modifyFighterFightsTable.setColumnHidden(0, True)  # FighterFightsID
-        self.ui.modifyFighterFightsTable.setColumnHidden(1, True)  # FightID
-        self.ui.modifyFighterFightsTable.setColumnHidden(2, True)  # OppFFID
-
+        self.genTable((query,"many",(fighterData[0])),headers=["FighterFightsID","FightID","OppFFID","Opponent ID","EventID","Result","Method","Round","Time","Title"],table=self.ui.modifyFighterFightsTable,isFightsTable=True)
+        self.ui.modifyFighterFightsTable.setColumnHidden(0, True)
+        self.ui.modifyFighterFightsTable.setColumnHidden(1, True)
+        self.ui.modifyFighterFightsTable.setColumnHidden(2, True)
         #display belts
         beltsList=self.connect("SELECT * FROM Belts WHERE FighterID=(SELECT FighterID FROM Fighters WHERE FighterID=?);","many",(fighterData[0],))
         if beltsList:
@@ -1070,79 +1023,101 @@ class MainWindow(QtWidgets.QMainWindow):
         if not index.isValid():
             QToolTip.hideText()
             return
-
-        # OpponentID column in your fights table
-        if index.column() != 3:
+        table = self.sender()  
+        if index.column() != 0:
             QToolTip.hideText()
             return
-
         try:
-            fid = int(index.data())
+            fighterId = int(index.data())
         except (TypeError, ValueError):
             QToolTip.hideText()
             return
-
-        name = self.fighterNameMap.get(fid)
+        name = self.fighterNameMap.get(fighterId)
         if name:
-            QToolTip.showText(QCursor.pos(), name, self.ui.modifyFighterFightsTable)
+            QToolTip.showText(QCursor.pos(), name, table)
         else:
-            QToolTip.hideText()
             QToolTip.hideText()
     ##Add fight button
     def modifyFighterAddFight(self):
         global fighterId
         print("Add fight")
-
-        # --- INSERT fight + link to this fighter (committed) ---
-        query = """
+        query="""
         DECLARE @FightID INT;
-        DECLARE @FighterID INT = ?;
-
-        INSERT INTO dbo.Fights (EventID, Method, EndRound, EndTime, Title)
-        VALUES (NULL, NULL, NULL, NULL, NULL);
-
-        SET @FightID = SCOPE_IDENTITY();
-
-        INSERT INTO dbo.FighterFights (FightID, FighterID, Corner, Result)
-        VALUES (@FightID, @FighterID, NULL, NULL);
+DECLARE @FighterID INT=?;
+INSERT INTO dbo.Fights (EventID, Method, EndRound, EndTime, Title)
+VALUES (NULL, 'KO', 1, '00:04:00', 'Main Event');
+SET @FightID = SCOPE_IDENTITY();
+INSERT INTO dbo.FighterFights (FightID, FighterID, Corner, Result)
+VALUES
+(@FightID, @FighterID, 'Red',  'W');"""
+        self.connect(query,"None",(fighterId))
+        query="""DECLARE @FighterID INT = ?;
+        SELECT
+        FighterFights.FighterFightsID AS [FighterFightsID],
+        FighterFights.FightID         AS [FightID],
+        (
+        SELECT TOP 1 FighterFights.FighterFightsID
+        FROM FighterFights
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentFighterFightsID],
+        (
+        SELECT TOP 1 FighterFights.FighterID
+        FROM FighterFights
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentID],
+        Fights.EventID,
+        FighterFights.Result AS [Result],
+        Fights.Method AS [Method],
+        Fights.EndRound AS [Round],
+        CONVERT(char(5), Fights.EndTime, 108) AS [Time],
+        Fights.Title
+        FROM FighterFights
+        JOIN Fights  ON Fights.FightID  = FighterFights.FightID
+        JOIN Events  ON Events.EventID  = Fights.EventID
+        WHERE FighterFights.FighterID = @FighterID
+        ORDER BY Fights.FightID DESC;
         """
-
-        # IMPORTANT: must be "none" so your connect() commits
-        # IMPORTANT: single param must be a tuple -> (fighterId,)
-        self.connect(query, "none", (fighterId,))
-
-        # --- refresh table (LEFT JOIN so NULL EventID still shows) ---
-        self.refreshAdminFightsTable()
+        self.genTable((query,"many",(fighterId)),headers=["FighterFightsID","FightID","OppFFID","Opponent ID","EventID","Result","Method","Round","Time","Title"],table=self.ui.modifyFighterFightsTable,isFightsTable=True)   
     #Delete fight
     def modifyFighterDeleteFight(self):
-        global fighterId
-        print("Delete fight")
-
-        table = self.ui.modifyFighterFightsTable
-        model = table.model()
-        index = table.currentIndex()
-
-        if (model is None) or (not index.isValid()):
-            QtWidgets.QMessageBox.critical(None, "Delete fight", "Select a fight first.")
-            return
-
-        row = index.row()
-
-        # Column 1 is FightID (hidden, but still there)
-        fightID = model.index(row, 1).data()
-
-        if fightID is None:
-            QtWidgets.QMessageBox.critical(None, "Delete fight", "FightID is None.")
-            return
-
-        query = """
-        DELETE FROM dbo.FighterFights WHERE FightID = ?;
-        DELETE FROM dbo.Fights        WHERE FightID = ?;
+        global modFighterSelected
+        query="""DECLARE @FightID INT = ?;
+        DELETE FROM dbo.FighterFights
+        WHERE FightID = @FightID;
+        DELETE FROM dbo.Fights
+        WHERE FightID = @FightID;"""
+        self.connect(query,"none",(modFighterCurrentId))
+        query="""DECLARE @FighterID INT = ?;
+        SELECT
+        FighterFights.FighterFightsID AS [FighterFightsID],
+        FighterFights.FightID         AS [FightID],
+        (
+        SELECT TOP 1 FighterFights.FighterFightsID
+        FROM FighterFights
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentFighterFightsID],
+        (
+        SELECT TOP 1 FighterFights.FighterID
+        FROM FighterFights
+        WHERE FighterFights.FightID = Fights.FightID
+          AND FighterFights.FighterID <> @FighterID
+        ) AS [OpponentID],
+        Fights.EventID,
+        FighterFights.Result AS [Result],
+        Fights.Method AS [Method],
+        Fights.EndRound AS [Round],
+        CONVERT(char(5), Fights.EndTime, 108) AS [Time],
+        Fights.Title
+        FROM FighterFights
+        JOIN Fights  ON Fights.FightID  = FighterFights.FightID
+        JOIN Events  ON Events.EventID  = Fights.EventID
+        WHERE FighterFights.FighterID = @FighterID
+        ORDER BY Fights.FightID DESC;
         """
-        self.connect(query, "none", (fightID, fightID))
-
-        # refresh (same query as above)
-        self.refreshAdminFightsTable()
+        self.genTable((query,"many",(fighterId)),headers=["FighterFightsID","FightID","OppFFID","Opponent ID","EventID","Result","Method","Round","Time","Title"],table=self.ui.modifyFighterFightsTable,isFightsTable=True)  
 
     ##Select fight 
     def modifyFighterSelectFight(self,index):
@@ -1187,16 +1162,16 @@ ORDER BY Fights.FightID DESC;"""
 FROM FighterFights
 JOIN Fights ON Fights.FightID = FighterFights.FightID
 WHERE FighterFights.FighterID = ?
-  AND FighterFights.Result = 'W'
+  AND FighterFights.Result = 'Win'
   AND Fights.Method = ?;"""
-        winsBreakdown=[self.connect(totalWinsQuery,"one",(fighterData[0],"SUB")),self.connect(totalWinsQuery,"one",(fighterData[0],"KO")),self.connect(totalWinsQuery,"one",(fighterData[0],"DEC"))]
+        winsBreakdown=[self.connect(totalWinsQuery,"one",(fighterData[0],"Submission")),self.connect(totalWinsQuery,"one",(fighterData[0],"KO/TKO")),self.connect(totalWinsQuery,"one",(fighterData[0],"Decision"))]
         totalWinsQuery="""SELECT COUNT(*)
 FROM FighterFights
 JOIN Fights ON Fights.FightID = FighterFights.FightID
 WHERE FighterFights.FighterID = ?
-  AND FighterFights.Result = 'L'
+  AND FighterFights.Result = 'Loss'
   AND Fights.Method = ?;"""
-        lossBreakdown=[self.connect(totalWinsQuery,"one",(fighterData[0],"SUB")),self.connect(totalWinsQuery,"one",(fighterData[0],"KO")),self.connect(totalWinsQuery,"one",(fighterData[0],"DEC"))]
+        lossBreakdown=[self.connect(totalWinsQuery,"one",(fighterData[0],"Submission")),self.connect(totalWinsQuery,"one",(fighterData[0],"KO/TKO")),self.connect(totalWinsQuery,"one",(fighterData[0],"Decision"))]
         #methods breakdown (winssub/winsko/winsdec/losssub/lossko/lossdec)
         methodsBreakdown=winsBreakdown+lossBreakdown
         print(methodsBreakdown)
@@ -1319,242 +1294,6 @@ WHERE FighterFights.FighterID = ?
     def importFromUFC(self):
         print("Import from UFC")
         
-    def refreshAdminFightsTable(self):
-        global fighterId
-
-        query = """
-        DECLARE @FighterID INT = ?;
-
-        SELECT
-            FighterFights.FighterFightsID AS [FighterFightsID],
-            FighterFights.FightID         AS [FightID],
-
-            (SELECT TOP 1 FighterFights.FighterFightsID
-            FROM FighterFights
-            WHERE FighterFights.FightID = Fights.FightID
-            AND FighterFights.FighterID <> @FighterID
-            ORDER BY FighterFights.FighterFightsID) AS [OppFFID],
-
-            (SELECT TOP 1 FighterFights.FighterID
-            FROM FighterFights
-            WHERE FighterFights.FightID = Fights.FightID
-            AND FighterFights.FighterID <> @FighterID
-            ORDER BY FighterFights.FighterFightsID) AS [OpponentID],
-
-            Fights.EventID,
-            FighterFights.Result AS [Result],
-            Fights.Method        AS [Method],
-            Fights.EndRound      AS [Round],
-            CONVERT(char(8), Fights.EndTime, 108) AS [Time],
-            Fights.Title
-        FROM FighterFights
-        JOIN Fights ON Fights.FightID = FighterFights.FightID
-        LEFT JOIN Events ON Events.EventID = Fights.EventID
-        WHERE FighterFights.FighterID = @FighterID
-        ORDER BY Fights.FightID DESC;
-        """
-
-        self.genTable(
-            (query, "many", (fighterId,)),
-            headers=["FighterFightsID","FightID","OppFFID","OpponentID","EventID","Result","Method","Round","Time","Title"],
-            table=self.ui.modifyFighterFightsTable,
-            isFightsTable=True
-        )
-
-        # hide internal IDs only
-        self.ui.modifyFighterFightsTable.setColumnHidden(0, True)
-        self.ui.modifyFighterFightsTable.setColumnHidden(1, True)
-        self.ui.modifyFighterFightsTable.setColumnHidden(2, True)
-
-        # make sure OpponentID + EventID are visible
-        self.ui.modifyFighterFightsTable.setColumnHidden(3, False)
-        self.ui.modifyFighterFightsTable.setColumnHidden(4, False)
-        
-    def updateEloRatings(self):
-        #firstly, set all ratings to defaults
-        self.connect("""UPDATE dbo.Fighters
-SET
-    EloRating = 1500,
-    Volatility = 350,
-    RatingDeviation = 200;""","none",None)
-        #then bring up the fights table
-        query="""
-WITH ff AS (
-    SELECT
-        FighterFights.FightID,
-        FighterFights.FighterID,
-        FighterFights.Result,
-        ROW_NUMBER() OVER (
-            PARTITION BY FighterFights.FightID
-            ORDER BY FighterFights.FighterFightsID
-        ) AS rn
-    FROM dbo.FighterFights
-),
-paired AS (
-    SELECT
-        ff.FightID,
-        MAX(CASE WHEN ff.rn = 1 THEN Fighters.FighterID  END) AS FighterA,
-        MAX(CASE WHEN ff.rn = 2 THEN Fighters.FighterID  END) AS FighterB,
-        MAX(CASE WHEN ff.rn = 1 THEN ff.Result      END) AS FighterAResult,
-        MAX(CASE WHEN ff.rn = 2 THEN ff.Result      END) AS FighterBResult
-    FROM ff
-    JOIN dbo.Fighters
-        ON Fighters.FighterID = ff.FighterID
-    GROUP BY ff.FightID
-)
-SELECT
-
-    paired.FighterA      AS FighterA,
-    paired.FighterB      AS FighterB,
-    paired.FighterAResult AS Result
-FROM paired
-LEFT JOIN dbo.Fights
-    ON Fights.FightID = paired.FightID
-LEFT JOIN dbo.Events
-    ON Events.EventID = Fights.EventID
-ORDER BY
-    CASE WHEN Events.[Date] IS NULL THEN 1 ELSE 0 END,
-    Events.[Date] ASC,
-    paired.FightID ASC;
-"""
-        chronoLogFightsTable=self.connect(query,"many",None)
-        #then systematically update all the elo ratings
-        for fight in range(len(chronoLogFightsTable)):
-            fighterA=chronoLogFightsTable[fight][0]
-            fighterB=chronoLogFightsTable[fight][1]
-            resultText=chronoLogFightsTable[fight][2]
-            if resultText=="W":
-                result=1
-            elif resultText=="L":
-                result=0
-            else:
-                result=0.5
-            fighterAdata=self.connect("SELECT * FROM Fighters WHERE FighterID=?","one",(fighterA,))
-            fighterBdata=self.connect("SELECT * FROM Fighters WHERE FighterID=?","one",(fighterB,))
-            r1=fighterAdata[5]
-            r2=fighterBdata[5]
-            rd1=fighterAdata[7]
-            rd2=fighterBdata[7]
-            sigma1=fighterAdata[6]
-            sigma2=fighterBdata[6]
-            new_r1, new_rd1, new_sigma1, new_r2, new_rd2, new_sigma2=glicko2_update_1v1(r1, rd1, sigma1, r2, rd2, sigma2, result)
-            sql = """
-            UPDATE dbo.Fighters
-            SET EloRating = ?, RatingDeviation = ?, Volatility = ?
-            WHERE FighterID = ?;
-
-            UPDATE dbo.Fighters
-            SET EloRating = ?, RatingDeviation = ?, Volatility = ?
-            WHERE FighterID = ?;
-            """
-            params = (
-                new_r1, new_rd1, new_sigma1, fighterA,
-                new_r2, new_rd2, new_sigma2, fighterB
-            )
-            self.connect(sql, "none", params)
-            #finally, refresh fighter table
-            self.loadModifyFighter()
-       
-def glicko2_update_1v1(r1, rd1, sigma1, r2, rd2, sigma2, result,
-                      tau=0.5, eps=1e-6):
-        """
-        Glicko-2 1v1 update.
-        Inputs:
-        r1, rd1, sigma1: fighter A rating, rating deviation, volatility
-        r2, rd2, sigma2: fighter B rating, rating deviation, volatility
-        result: 'Win'/'Loss'/'Draw' (from fighter A perspective) OR numeric 1/0/0.5
-        Returns:
-        (new_r1, new_rd1, new_sigma1, new_r2, new_rd2, new_sigma2)
-        """
-
-        # ---------- map result to score ----------
-        if isinstance(result, (int, float)):
-            s1 = float(result)  # expect 1, 0.5, or 0
-        else:
-            res = str(result).strip().lower()
-            if res in ("win", "w", "red"):      # if you ever use corners
-                s1 = 1.0
-            elif res in ("loss", "l", "blue"):
-                s1 = 0.0
-            elif res in ("draw", "d"):
-                s1 = 0.5
-            else:
-                raise ValueError("result must be Win/Loss/Draw or 1/0/0.5")
-
-        s2 = 1.0 - s1 if s1 != 0.5 else 0.5
-
-        # ---------- constants / conversions ----------
-        SCALE = 173.7178
-        PI2 = math.pi ** 2
-
-        def to_mu(r):  return (r - 1500.0) / SCALE
-        def to_phi(rd): return rd / SCALE
-        def to_r(mu):  return mu * SCALE + 1500.0
-        def to_rd(phi): return phi * SCALE
-
-        def g(phi):
-            return 1.0 / math.sqrt(1.0 + (3.0 * phi * phi) / PI2)
-
-        def E(mu, mu_j, phi_j):
-            return 1.0 / (1.0 + math.exp(-g(phi_j) * (mu - mu_j)))
-
-        def update_single(r, rd, sigma, r_op, rd_op, s):
-            mu = to_mu(r)
-            phi = to_phi(rd)
-            mu_j = to_mu(r_op)
-            phi_j = to_phi(rd_op)
-
-            g_j = g(phi_j)
-            E_j = E(mu, mu_j, phi_j)
-
-            v = 1.0 / (g_j * g_j * E_j * (1.0 - E_j))
-            delta = v * g_j * (s - E_j)
-
-            a = math.log(sigma * sigma)
-
-            def f(x):
-                ex = math.exp(x)
-                num = ex * (delta * delta - phi * phi - v - ex)
-                den = 2.0 * (phi * phi + v + ex) * (phi * phi + v + ex)
-                return (num / den) - ((x - a) / (tau * tau))
-
-            # find A,B for root finding
-            A = a
-            if delta * delta > (phi * phi + v):
-                B = math.log(delta * delta - phi * phi - v)
-            else:
-                k = 1
-                B = a - k * tau
-                while f(B) < 0:
-                    k += 1
-                    B = a - k * tau
-
-            fA = f(A)
-            fB = f(B)
-
-            # Illinois algorithm
-            while abs(B - A) > eps:
-                C = A + (A - B) * fA / (fB - fA)
-                fC = f(C)
-                if fC * fB < 0:
-                    A, fA = B, fB
-                else:
-                    fA = fA / 2.0
-                B, fB = C, fC
-
-            sigma_prime = math.exp(A / 2.0)
-
-            phi_star = math.sqrt(phi * phi + sigma_prime * sigma_prime)
-            phi_prime = 1.0 / math.sqrt((1.0 / (phi_star * phi_star)) + (1.0 / v))
-            mu_prime = mu + (phi_prime * phi_prime) * g_j * (s - E_j)
-
-            return to_r(mu_prime), to_rd(phi_prime), sigma_prime
-
-        new_r1, new_rd1, new_sigma1 = update_single(r1, rd1, sigma1, r2, rd2, s1)
-        new_r2, new_rd2, new_sigma2 = update_single(r2, rd2, sigma2, r1, rd1, s2)
-
-        return new_r1, new_rd1, new_sigma1, new_r2, new_rd2, new_sigma2
- 
 #Show the Window
 print("Show the Window")
 if __name__ == "__main__":
