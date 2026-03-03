@@ -1,34 +1,28 @@
-from PyQt5 import QtWidgets
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtWidgets import QApplication, QMainWindow, QLabel, QPushButton, QHeaderView, QMessageBox
-from qclickablelabel import QClickableLabel
-import sys
-from ui import Ui_mainWindow 
-import os
-import pyodbc
-import hashlib
+
 import base64
-from PyQt5.QtGui import QPixmap, QStandardItemModel, QStandardItem, QIcon
-import sys
-import requests
-from io import BytesIO
-import math
-from PyQt5.QtWidgets import QAbstractItemView,QToolTip
-from PyQt5.QtCore import QThreadPool, QDate
-from PyQt5.QtGui import QCursor
-from PyQt5.QtWidgets import QWidget, QVBoxLayout
-from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
-from matplotlib.figure import Figure
-import sys
-import traceback
 import ctypes
-import time
+from datetime import datetime
+import hashlib
+import math
+import os
 import re
-import datetime
-from PyQt5.QtCore import QThreadPool, QRunnable, QObject, pyqtSignal, pyqtSlot, Qt
+import sys
+import time
+import traceback
+from io import BytesIO
+import pyodbc
+import requests
 ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(
     "tomjubb.mma.companion"
 )
+from PyQt5 import QtWidgets
+from PyQt5.QtCore import Qt,QDate,QObject,QRunnable,QThreadPool,pyqtSignal,pyqtSlot
+from PyQt5.QtGui import QCursor, QIcon, QPixmap, QStandardItem, QStandardItemModel
+from PyQt5.QtWidgets import QAbstractItemView,QApplication,QLabel,QHeaderView,QMainWindow,QMessageBox,QPushButton,QToolTip,QVBoxLayout,QWidget
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
+from matplotlib.figure import Figure
+from qclickablelabel import QClickableLabel
+from ui import Ui_mainWindow
 
 #Configuring DPI settings so the UI isn't all messed up
 print("#Configuring DPI settings so the UI isn't all messed up")
@@ -79,12 +73,19 @@ class MainWindow(QtWidgets.QMainWindow):
         leaderboardCurrentId = None
         #fighter profile globals
         global userProfileFighterID
+        userProfileFighterID = None
         #options globals
         global eventClickedIndex
         global beltClickedIndex
         #survey globals
         global newAccount
-        
+        global subOpinion
+        global koOpinion
+        global decOpinion
+        subOpinion=1
+        koOpinion=1
+        decOpinion=1
+                
         #init options elements
         self.ui.optionsReturnButton.clicked.connect(lambda:self.loadModifyFighter())
         self.ui.addBeltsButton.clicked.connect(lambda:self.addBelt())
@@ -153,7 +154,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.OddsClearButton.clicked.connect(lambda:self.resetComboBoxes())
         self.ui.CalculateButton.clicked.connect(lambda:self.submitOddsCalc())
         
-        #init fighter profile elements
            
             
         #init survey elements
@@ -203,6 +203,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     cursor.execute(statementSQL,params)
                 else:
                     cursor.execute(statementSQL) 
+                #Select query mode (fetch one/ fetch all/ fetch none which is for updating and deleting things from tables)
                 if queryType == "one":
                     row=cursor.fetchone()
                     return row
@@ -232,6 +233,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not rows:
             rows=[]
         model = QStandardItemModel()
+        #Stop model signals so edits aren't messed up
         model.blockSignals(True)
         model._tableName=dbTableName  
         model._pkCol=pkColName       
@@ -263,6 +265,7 @@ class MainWindow(QtWidgets.QMainWindow):
         model=item.model()
         row=item.row()
         col=item.column()
+        #Verify that the edit has all of the components present to be saved into the database later
         if not hasattr(model,"_tableName") or model._tableName is None:
             QtWidgets.QMessageBox.critical(None, "Record Edits Error", "No tablename attribute")
             return
@@ -286,6 +289,7 @@ class MainWindow(QtWidgets.QMainWindow):
     def submitEdits(self,table):
         print("Submit edits")
         model=table.model()
+        #Verify that the model is there with all of its features
         if model is None:
             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No model")
             return
@@ -295,6 +299,7 @@ class MainWindow(QtWidgets.QMainWindow):
         if not hasattr(model,"_pkCol") or model._pkCol is None:
             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No model pk columns")
             return
+        #Set up each key
         keysToApply=[]
         for key in list(self.pendingEdits.keys()):
             tableName,pkCol,primaryKey,columnName=key
@@ -305,21 +310,27 @@ class MainWindow(QtWidgets.QMainWindow):
             newValue = self.pendingEdits[key]
             #Belts dupe check
             if tableName == "Belts" and columnName == "WeightClass":
-                beltCheck = self.connect("SELECT COUNT(*) FROM Belts WHERE WeightClass=?","one",(newValue))
-                if not newValue.strip():
-                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Belt name is blank")
-                        self.initOptions()
-                        return    
-                if newValue=="RETIRED":
-                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Invalid Belt name")
-                        self.initOptions()
-                        return    
-                if beltCheck is not None:
-                    if beltCheck[0] > 0:
-                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Belt already exists")
-                        self.initOptions()
-                        return
-            #Events dupe check
+                #Validate belts
+                beltCheck = self.connect("SELECT COUNT(*) FROM Belts WHERE WeightClass=?","one",(newValue,))
+                if newValue is None:
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Pending edits is None")
+                    self.initOptions()
+                    return   
+                else:
+                    if not newValue.strip():
+                            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Belt name is blank")
+                            self.initOptions()
+                            return    
+                    if newValue=="RETIRED":
+                            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Invalid Belt name")
+                            self.initOptions()
+                            return    
+                    if beltCheck is not None:
+                        if beltCheck[0] > 0:
+                            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Belt already exists")
+                            self.initOptions()
+                            return
+            #Events Validation
             if tableName == "Events" and columnName in ["Name","Location","Date"]:
                 eventRow = self.connect("SELECT Name, Location, Date FROM Events WHERE EventID=?","one",(primaryKey,))
                 name, location, date = eventRow
@@ -340,12 +351,14 @@ class MainWindow(QtWidgets.QMainWindow):
                         QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Date must be in YYYY-MM-DD format")
                         self.initOptions()
                         return
-                eventsCheck = self.connect("SELECT COUNT(*) FROM Events WHERE Name=? AND Location=? AND Date=?","one",(name, location, date))
+                #Event dupe check
+                eventsCheck = self.connect("SELECT COUNT(*) FROM Events WHERE Name=? AND Location=? AND Date=? AND EventID<>?","one",(name, location, date,primaryKey,))
                 if eventsCheck[0] > 0:
                     QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Event already exists")
                     self.initOptions()
                     return
             #Events format check
+        #Apply each key
         for key in keysToApply:
             tableName,pkCol,primaryKey,columnName=key
             newValue=self.pendingEdits[key]
@@ -362,12 +375,12 @@ class MainWindow(QtWidgets.QMainWindow):
     ##submit fighter fights table edit
     def submitFighterFights(self):
         global fighterId, fightsTablePendingEdits
-
+        #Check for model existing
         model = self.ui.modifyFighterFightsTable.model()
         if model is None:
             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No model")
             return
-
+        #List out all of the unique edits
         uniqueEdits = list({(r, c) for r, c in fightsTablePendingEdits})
         fightsTablePendingEdits.clear()
 
@@ -375,13 +388,14 @@ class MainWindow(QtWidgets.QMainWindow):
             # ignore hidden columns
             if col < 3:
                 continue
+            #Check cells
             cell = model.item(row, col)
             value = None if cell is None else cell.text()
             if value is not None and (value.strip() == "" or value.strip() == "None"):
                 value = None
             profileFFID = model.item(row, 0).text()  # hidden
             fightID     = model.item(row, 1).text()  # hidden
-            #Opponent ID
+            #Opponent ID checking 
             if col == 3:
                 newOppID = value
                 # allow clearing opponent
@@ -395,7 +409,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "OpponentID must be a number.")
                     continue
                 #must exist
-                opponentCount=self.connect("""SELECT COUNT(*) FROM Fighters WHERE FighterID=?;""","one",(newOppID))
+                opponentCount=self.connect("""SELECT COUNT(*) FROM Fighters WHERE FighterID=?;""","one",(newOppID_int))
                 if opponentCount[0]!=1:
                     QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "OpponentID doesn't exist")
                     continue
@@ -439,19 +453,19 @@ class MainWindow(QtWidgets.QMainWindow):
                 oppResult = None
                 if newResult not in (None, "", "None"):
                     oppResult = self.oppositeResult(newResult)
-
+                #Update fighterfights 
                 self.connect(
                     "UPDATE dbo.FighterFights SET Result=? WHERE FightID=? AND FighterID<>?;",
                     "none",
                     (oppResult, fightID, fighterId)
                 )
                 continue
-            # FIGHTS TABLE EDITS
             #  4 EventID,  6 Method,  7 Round,  8 Time,  9 Title
             if col == 4:  # EventID
                 if value is None:
                     eventVal = None
                     QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Event ID missing")
+                    continue
                 else:
                     try:
                         eventVal = int(value)
@@ -533,7 +547,7 @@ WHERE ff.FighterID = ?
     def loadImage(self, url, element, mode, imagePath):
         element.clear()
         print("loadimage")
-        
+        #Load image from file
         if mode == "File":
             if imagePath is None:
                 print("Image path is none")
@@ -542,7 +556,7 @@ WHERE ff.FighterID = ?
             fullPath = os.path.abspath(fullPath)
             pixmap = QPixmap(fullPath)
             self.applyPixmap(pixmap, element)
-            
+        #Load default profile picture
         else:  
             if url is None:
                 print("Url is none")
@@ -552,18 +566,19 @@ WHERE ff.FighterID = ?
                 self.applyPixmap(pixmap, element)
                 return
             
-            # Spin up a background worker for the web request
+            #Get background worker for the web request
             worker = ImageWorker(url, element)
             worker.signals.finished.connect(self.onImageDownloadFinished)
             worker.signals.error.connect(self.onImageDownloadError)
             self.threadpool.start(worker)
-    #Callback for successful background download
+    #successful background download
     def onImageDownloadFinished(self, image_data, element):
         pixmap = QPixmap()
         pixmap.loadFromData(image_data)
         self.applyPixmap(pixmap, element)
-    # Callback for failed background download
+    #failed background download
     def onImageDownloadError(self, error_msg, element):
+        element.clear()
         print(f"Image Loader Error: {error_msg}")
         fullPath = os.path.join(os.path.dirname(__file__), "..", "Assets", "defaultpfp.png")
         fullPath = os.path.abspath(fullPath)
@@ -629,6 +644,7 @@ WHERE ff.FighterID = ?
                                           
     #Navigation subroutines 
     def navigate(self,page):
+        #Set active page
         global activePage
         activePage = page
         pages=[
@@ -650,16 +666,21 @@ WHERE ff.FighterID = ?
         global subOpinion
         global koOpinion
         global decOpinion
+        #Setting stars
         subStars=[self.ui.surveyStarSub1, self.ui.surveyStarSub2, self.ui.surveyStarSub3, self.ui.surveyStarSub4, self.ui.surveyStarSub5]
         koStars=[self.ui.surveyStarKo1, self.ui.surveyStarKo2, self.ui.surveyStarKo3, self.ui.surveyStarKo4, self.ui.surveyStarKo5]
         decStars=[self.ui.surveyStarDec1, self.ui.surveyStarDec2, self.ui.surveyStarDec3, self.ui.surveyStarDec4, self.ui.surveyStarDec5]
         print("Star Clicked",str(row),str(number))
+        #Figure out row
         if row == "sub":
              stars = subStars
         elif row == "ko":
              stars = koStars
         elif row == "dec":
              stars = decStars
+        else:
+            return
+        #Fill the stars
         for i in range(5):
             if i <= number:
                 imagePath = os.path.join(os.path.dirname(__file__), "..", "Assets", "FilledStar.png")
@@ -669,6 +690,7 @@ WHERE ff.FighterID = ?
                 imagePath = os.path.join(os.path.dirname(__file__), "..", "Assets", "BlankStar.png")
                 imagePath = os.path.abspath(imagePath)
                 stars[i].setPixmap(QPixmap(imagePath))
+        #Set opinion number
         if row == "sub":
             subOpinion = number + 1
             print(subOpinion)
@@ -678,9 +700,12 @@ WHERE ff.FighterID = ?
         elif row == "dec":
             decOpinion = number + 1
             print(decOpinion)
+        
+            
     
     #Result allocation subroutine 
     def oppositeResult(self,result):
+        #Get opposite result off of a qualitative fighter stat
         if result == "W":
             return "L"
         elif result == "L":
@@ -775,6 +800,10 @@ WHERE ff.FighterID = ?
             self.initSurvey(False)
     #Submit survey
     def surveySubmit(self):
+        #Submit survey results
+        global subOpinion
+        global koOpinion
+        global decOpinion
         global newAccount
         print(subOpinion,decOpinion,koOpinion)
         favouriteFighter = self.ui.favouriteFighterCombo.currentData()
@@ -806,6 +835,7 @@ WHERE ff.FighterID = ?
         self.loadModifyFighter()
     ##load data of fighter onto right part of gui when part of table is clicked
     def modFighterLoadFighterData(self,index):
+        #Load fighter table
         TotalLosses=0
         TotalWins=0
         TotalDraws=0
@@ -851,6 +881,7 @@ WHERE ff.FighterID = ?
         searchTerm = self.ui.modifyFighterListSearchText.toPlainText()
         distances = self.tableDistances(searchTerm)
         newTable = []
+        #Order table by least distant first
         for fighterID, distance in distances:
             rowData=[]
             for row in range(model.rowCount()):
@@ -863,6 +894,7 @@ WHERE ff.FighterID = ?
             newTable.append(rowData)        
         model.clear() 
         model.setColumnCount(len(newTable[0]) if newTable else 0) 
+        #Populate model
         for row,rowData in enumerate(newTable):
             for col, value in enumerate(rowData):
                 model.setItem(row,col,QStandardItem(value))
@@ -880,9 +912,11 @@ WHERE ff.FighterID = ?
         self.clearComboBoxes()
         comboBoxes=[self.ui.fighterAComboBox,self.ui.fighterBComboBox]
         currentSelections=[currentA,currentB]
+        #Block signals for initialisation
         comboBoxes[0].blockSignals(True)
         comboBoxes[1].blockSignals(True)
         self.clearComboBoxes()
+        #Bring up combo data
         if oddsComboCurrentWeightClass:
             query=("SELECT FighterID, Name FROM Fighters WHERE WeightClass=?;", "many", (oddsComboCurrentWeightClass,))
         else:
@@ -890,6 +924,7 @@ WHERE ff.FighterID = ?
         fighterList = self.connect(query[0],query[1],query[2])
         if not fighterList:
             fighterList = []
+        #Populate box
         for i in range(2):
             for fighterID,fighterName in fighterList:
                 comboBoxes[i].addItem(fighterName,fighterID)
@@ -898,10 +933,12 @@ WHERE ff.FighterID = ?
                     comboBoxes[i].setCurrentIndex(index)
         comboBoxes[0].blockSignals(False)
         comboBoxes[1].blockSignals(False)
+        #Let it be changed again
         if activePage != 6:
             self.navigate(6)
     ##When combo boxes change    
     def comboBoxesChanged(self, index, box):
+        #Check is updating is happening already 
         global updatingTables
         global oddsComboCurrentWeightClass
         if updatingTables == True:
@@ -910,6 +947,7 @@ WHERE ff.FighterID = ?
         updatingTables = True 
         comboBoxes = [self.ui.fighterAComboBox, self.ui.fighterBComboBox]
         currentID = None
+        #Set current id of box
         if box == "A":
             currentID = comboBoxes[0].currentData()
         elif box == "B":
@@ -925,6 +963,7 @@ WHERE ff.FighterID = ?
             oddsComboCurrentWeightClass = None 
         self.initComboBoxes() 
         updatingTables = False
+        #Load images
         fighterAID = self.ui.fighterAComboBox.currentData()
         fighterBID = self.ui.fighterBComboBox.currentData()
         if fighterAID is not None:
@@ -1001,9 +1040,10 @@ WHERE ff.FighterID = ?
         fighterBElo = fighterBData[5]
         fighterAName = fighterAData[1]
         fighterBName = fighterBData[1]
+        #Glicko prob algorithm
         probA = 1.0 / (1.0 + 10 ** ((fighterBElo - fighterAElo) / 400.0))
-        probA=round(probA,2)
         probA=probA*100
+        probA=round(probA,2)
         if probA > 50:
             #A dominant
             probA=str(probA)
@@ -1036,6 +1076,9 @@ WHERE ff.FighterID = ?
         entertainmentRating=200
         for j in range(1):
             totalFights=self.connect("""SELECT COUNT(*) FROM FighterFights WHERE FighterID=?;""","one",(fighterArray[j],))
+            if totalFights[0] == 0:
+                entertainmentRating=50
+                break
             totalSubs=self.connect("""SELECT COUNT(*) FROM FighterFights
     WHERE FighterID=? AND FightID IN (SELECT FightID FROM Fights WHERE Method='SUB');
     ""","one",fighterArray[j])
@@ -1048,6 +1091,7 @@ WHERE ff.FighterID = ?
             fighterDecRate=(totalDecs[0]/totalFights[0])*100
             fighterSubRate=(totalSubs[0]/totalFights[0])*100
             fighterKoRate=(totalKos[0]/totalFights[0])*100
+            #Find out what fighters do above average
             userData=self.connect("""SELECT SubOpinion,KoOpinion,DecisionOpinion,favouriteFighter FROM Users WHERE Username=?""","one",(usernameToken))
             fighterOpinionArray=[False,False,False,False]
             if fighterSubRate>averageSubRate:
@@ -1059,6 +1103,7 @@ WHERE ff.FighterID = ?
             if fighterArray[j] == userData[3]:
                 fighterOpinionArray[3]=True
             entertainmentRating=75
+            #Apply rating for each thign they do above average
             for i in range(3):
                 if fighterOpinionArray[i] == True:
                     if i != 3:
@@ -1077,6 +1122,7 @@ WHERE ff.FighterID = ?
         self.ui.leaderboardTableView.setColumnHidden(0, True)
         self.ui.leaderboardFighterBelts.setText("")
         self.ui.leaderboardFighterRecord.setText("")
+        #Hide admin panel if user isnt admin
         if isAdmin == 0:   
             self.ui.leaderboardManageListButton.hide()
         else:              
@@ -1114,6 +1160,7 @@ WHERE ff.FighterID = ?
                 TotalDraws += 1
         record=str(TotalWins)+"-"+str(TotalDraws)+"-"+str(TotalLosses)
         self.ui.leaderboardFighterRecord.setText(record)
+        #Load belts
         beltsList=self.connect("SELECT * FROM Belts WHERE FighterID=(SELECT FighterID FROM Fighters WHERE FighterID=?);","many",(leaderboardCurrentId,))
         if beltsList:
                 beltsText="Belts: "
@@ -1131,11 +1178,13 @@ WHERE ff.FighterID = ?
     def leaderboardSearchFighter(self):
         model=self.ui.leaderboardTableView.model()
         searchTerm = self.ui.leaderboardFighterSearch.toPlainText()
+        #Reject blank searches
         if searchTerm == "" or searchTerm == " ":
             return
         headers = ["FighterID", "Name", "Weight Class", "Birthdate", "Gym"]
         distances = self.tableDistances(searchTerm)
         newTable = []
+        #Sort ids by edit distance
         for fighterID, distance in distances:
             rowData=[]
             for row in range(model.rowCount()):
@@ -1149,6 +1198,7 @@ WHERE ff.FighterID = ?
         model.clear()  
         model.setColumnCount(len(headers)) 
         model.setHorizontalHeaderLabels(headers)
+        #Load model
         for row,rowData in enumerate(newTable):
             for col, value in enumerate(rowData):
                 model.setItem(row,col,QStandardItem(value)) 
@@ -1159,7 +1209,7 @@ WHERE ff.FighterID = ?
     def showProfileAdmin(self,index):
         global fighterId
         fighterId = index.siblingAtColumn(0).data() 
-        print("display profile of fighterID "+fighterId)
+        print("display profile of fighterID "+str(fighterId))
         fighterData=self.connect("SELECT * FROM Fighters WHERE FighterId=?","one",(fighterId))
         print("fighterdata:"+str(fighterData))
         self.ui.modifyFighterTitle.setText("Editing Fighter:"+str(fighterData[1]))
@@ -1381,8 +1431,8 @@ WHERE ff.FighterID = ?
             self.ui.fighterProfileHeightLabel.setText("Height:"+str(textHeight))
             self.ui.fighterProfileReachLabel.setText("Reach:"+str(textReach))
         else:   
-            self.ui.modifyFighterHeight.setPlainText(height)
-            self.ui.modifyFighterReach.setPlainText(reach)
+            self.ui.fighterProfileHeightLabel.setPlainText(height)
+            self.ui.fighterProfileReachLabel.setPlainText(reach)
         query="""DECLARE @FighterID INT = ?;
 
 SELECT
@@ -1404,7 +1454,7 @@ JOIN Fights ON Fights.FightID = FighterFights.FightID
 JOIN Events ON Events.EventID = Fights.EventID
 WHERE FighterFights.FighterID = @FighterID
 ORDER BY Fights.FightID DESC;"""
-        self.genTable((query,"many",(fighterData[0])),["Opponent Name","Event Name","Date","Result","Method","Round","Time"],self.ui.fighterProfileFights,isFightsTable=True)
+        self.genTable((query,"many",(fighterData[0],)),["Opponent Name","Event Name","Date","Result","Method","Round","Time"],self.ui.fighterProfileFights,isFightsTable=False)
         #Piechart-Figure out totals (sub/ko/dec)
         totalWinsQuery="""SELECT COUNT(*)
 FROM FighterFights
@@ -1446,7 +1496,7 @@ WHERE FighterFights.FighterID = ?
             if term != 0:
                 all0=False
         print(sizes)
-        if len(sizes) is None or all0==True:
+        if len(sizes)==0 or all0==True:
             self.ui.nodatamessage.show()
         def makeAutopct(values):
             total = sum(values)
@@ -1493,19 +1543,22 @@ JOIN Fights ON Fights.FightID = FighterFights.FightID
 JOIN Events ON Events.EventID = Fights.EventID
 WHERE FighterFights.FighterID = @FighterID
 ORDER BY Events.Date DESC;"""
-        fightRows=self.connect(query,"many",userProfileFighterID)
-        streakLoopTerminated=True
-        fight=1
-        streakResult=fightRows[0][3]
-        if streakResult is not None:
-            streak=1
-            while streakLoopTerminated == True and fight<(len(fightRows)-1):
-                if fightRows[fight][3] == streakResult:
-                    streak=streak+1
-                    fight=fight+1
-                else:
-                    streakLoopTerminated=False
-            self.ui.fighterProfileStreakLabel.setText("Streak:"+str(streakResult)+"-"+str(streak))
+        fightRows=self.connect(query,"maFny",userProfileFighterID)
+        if fightRows is None:
+            self.ui.fighterProfileStreakLabel.setText("No Streak")
+        else:
+            streakLoopTerminated=True
+            fight=1
+            streakResult=fightRows[0][3]
+            if streakResult is not None:
+                streak=1
+                while streakLoopTerminated == True and fight<(len(fightRows)-1):
+                    if fightRows[fight][3] == streakResult:
+                        streak=streak+1
+                        fight=fight+1
+                    else:
+                        streakLoopTerminated=False
+                self.ui.fighterProfileStreakLabel.setText("Streak:"+str(streakResult)+"-"+str(streak))
         #deal with rating
         self.displayApproval(userProfileFighterID)
         #Deal with top 10 fighters they have fought against
@@ -1553,6 +1606,7 @@ WHERE FighterFights.FighterID = ?
     ##Approval votes
     def voteApproval(self,fighterID,rating):
         global usernameToken
+        global userProfileFighterID
         rating=1 if int(rating) == 1 else 0
         user=self.connect("SELECT userId FROM Users where Username=?;","one",(usernameToken))
         if not user:
@@ -1563,7 +1617,7 @@ WHERE FighterFights.FighterID = ?
         if not existing:
             self.connect("INSERT INTO Approvals VALUES (?,?,?)","none",(userID,fighterID,rating))
         if existing:
-            self.connect("UPDATE Approvals SET Rating=? WHERE UserID=?","none",(rating,userID))
+            self.connect("UPDATE Approvals SET Rating=? WHERE UserID=? AND FighterID=?","none",(rating,userID,userProfileFighterID))
         self.displayApproval(fighterID)
         
     #Options subroutines
@@ -1581,7 +1635,7 @@ WHERE FighterFights.FighterID = ?
     def addBelt(self):
         self.connect("INSERT INTO Belts VALUES (?,1)","none",("Blank Belt",))
         self.genTable(("SELECT * FROM Belts","many",None),["Belt ID","Title","Holder ID"],self.ui.beltsTable)
-        self.submitEdits()
+        self.submitEdits(self.ui.beltsTable)
         print("Add belt")
     ##Delete belt
     def deleteBelt(self):
@@ -1589,7 +1643,7 @@ WHERE FighterFights.FighterID = ?
         print("Delete belt")
         if beltClickedIndex is not None:
             self.connect("DELETE FROM Belts WHERE BeltID=?","none",(beltClickedIndex,))
-            self.connect("""UPDATE Fights SET WeightClass='RETIRED' WHERE WeightClass=?""","none",(beltClickedIndex,))
+            self.connect("""UPDATE Fights SET WeightClass='RETIRED' WHERE WeightClass=(SELECT WeightClass FROM Belts WHERE BeltID=?)""","none",(beltClickedIndex,))
             self.genTable(("SELECT * FROM Belts","many",None),["Belt ID","Title","Holder ID"],self.ui.beltsTable)
             self.submitEdits()
     #Event clicked
@@ -1600,7 +1654,7 @@ WHERE FighterFights.FighterID = ?
     def addEvent(self):
         self.connect("INSERT INTO Events (Name,Location,Date) VALUES (?,?,?)","none",("name","location","1984-02-02"))
         self.genTable(("SELECT * FROM Events","many",None),["Event ID","Name","Location","Date"],self.ui.eventsTable) 
-        self.submitEdits()       
+        self.submitEdits(self.ui.eventsTable)       
         print("Add event")
     ##Delete event
     def deleteEvent(self):
@@ -1609,9 +1663,9 @@ WHERE FighterFights.FighterID = ?
         if eventClickedIndex is not None:
             dependencies=False
             #Check for dependencies and erase them if so ask if they want them gone as well
-            dependencyCount=self.connect("SELECT COUNT(*) FROM Fights WHERE EventID=?;","one",(eventClickedIndex,))
-            if dependencyCount==0 or dependencyCount is None:
-                dependencies=True
+            depedencyQuery=self.connect("SELECT COUNT(*) FROM Fights WHERE EventID=?;","one",(eventClickedIndex,))
+            dependencyCount=depedencyQuery[0]
+            dependencies=(dependencyCount>0)
             if dependencies==True:
                 reply = QMessageBox.question(
                     self,                        
@@ -1622,14 +1676,14 @@ WHERE FighterFights.FighterID = ?
                 )
                 if reply == QMessageBox.Yes:
                     #Erase event and its dependencies
-                    self.connect("DELETE FROM FighterFights WHERE FightID=(SELECT FightID FROM Fights WHERE EventID=?);","none",(eventClickedIndex))
+                    self.connect("DELETE FROM FighterFights WHERE FightID IN (SELECT FightID FROM Fights WHERE EventID=?);","none",(eventClickedIndex))
                     self.connect("DELETE FROM Fights WHERE EventID=?;","none",(eventClickedIndex))
                 else:
                     return
             if dependencies==False: 
                 self.connect("DELETE FROM Events WHERE EventID=?","none",(eventClickedIndex,))
             self.genTable(("SELECT * FROM Events","many",None),["Event ID","Name","Location","Date"],self.ui.eventsTable)  
-            self.submitEdits()
+            self.submitEdits(self.ui.eventsTable)
             
     ##Auto-assign belts
     def autoAssignBelts(self):
@@ -1658,13 +1712,13 @@ WHERE Title = ?);""","one",(beltLessDivisions[belt][0],))
             self.connect("""UPDATE Belts
 SET FighterID=?
 WHERE WeightClass=?""","none",(mostRecentWinner[0],beltLessDivisions[belt][0],))
-            #Output done message box
-            msg = QMessageBox()
-            msg.setIcon(QMessageBox.Information)
-            msg.setText("Belt Auto-Assignment Complete."+str(len(beltLessDivisions))+" beltless divisons found.")
-            msg.setWindowTitle("Auto-Assignment Complete")
-            msg.exec()
             self.genTable(("SELECT * FROM Belts","many",None),["Belt ID","Name","Holder ID"],self.ui.beltsTable,"Belts","BeltID",["BeltID","WeightClass","FighterID"])
+        msg = QMessageBox()
+        msg.setText("Belt Auto-Assignment Complete."+str(len(beltLessDivisions))+" beltless divisons found.")
+        msg.setWindowTitle("Auto-Assignment Complete")
+        msg.setIcon(QMessageBox.Information)
+        msg.exec()
+            
     ##Import from UFC
     def importFromUFC(self):
         print("Import from UFC")
@@ -1702,7 +1756,7 @@ WHERE WeightClass=?""","none",(mostRecentWinner[0],beltLessDivisions[belt][0],))
         WHERE FighterFights.FighterID = @FighterID
         ORDER BY Fights.FightID DESC;
         """
-
+        #Generate admin fights table
         self.genTable(
             (query, "many", (fighterId,)),
             headers=["FighterFightsID","FightID","OppFFID","OpponentID","EventID","Result","Method","Round","Time","Title"],
@@ -1786,7 +1840,7 @@ ORDER BY
             rd2=fighterBdata[7]
             sigma1=fighterAdata[6]
             sigma2=fighterBdata[6]
-            new_r1, new_rd1, new_sigma1, new_r2, new_rd2, new_sigma2=glicko2_update_1v1(r1, rd1, sigma1, r2, rd2, sigma2, result)
+            newR1, newRd1, newSigma1, newR2, newRd2, newSigma2=glicko2(r1, rd1, sigma1, r2, rd2, sigma2, result)
             sql = """
             UPDATE dbo.Fighters
             SET EloRating = ?, RatingDeviation = ?, Volatility = ?
@@ -1828,46 +1882,48 @@ ORDER BY
             return(length)
         except:
             return(False)
-            
-    #Presence 
-    def presenceCheck(self,toCheck,address):
-        global validationQueue
-        if toCheck is not None or toCheck=="None":
-            validationQueue.append(["Presence",toCheck,address])
-            return False
-        else:
-            return True
-    #Length
-    def lengthCheck(self,toCheck,length,address):
-        global validationQueue
-        if toCheck is str:
-            if str.count(toCheck) > length:
-                validationQueue.append(["Length",toCheck,address])
-                return False
-        else:
-            validationQueue.append(["Type on Length",toCheck,address])
-            return False
-    #Lookup
-    def lookupCheck(self,toCheck,address,criteria):
-        global validationQueue
-        for i in len(criteria):
-            if toCheck==criteria[i]:
-                return True
-        validationQueue.append(["Lookup",toCheck,address])
-        return False
-    #Format
-    def formatCheck(self,toCheck,address,wantedType):
-        global validationQueue
-        if type(toCheck)==wantedType:
-            return True
-        else:
-            validationQueue.append(["Type",toCheck,address])
-            return False
-        
+   
 #Glicko elo calculation
-def glicko2_update_1v1(r1, rd1, sigma1, r2, rd2, sigma2, result,
+#To stay truthful to the algorithm, I had to make it so the variables had names that can be quite hard to identify. Here is the dictionary for all of the variables i use:
+#r1 and r1 are player ratings for 1 and 2 respectively
+#rd1 and rd2 are rating deviation
+#sigma1 and sigma2 is volatility
+#result is the match outcome from the perspective of P1
+#Tau is the volatility constraint which limits how volatility can change in one update
+#Eps is tolerance which stops root search when the bracket is small enough
+#s1 and s2 converts results into a numeric score
+#scale is the scale constant which puts rating and rating deviation into internal units
+#pi2 is just pi squared and its used in the phi formula
+#toMu toPhi and toR are internal conversions
+#g is the impact function which decreases the impact of opponents who don't have high certainty
+#E is the expected score function 
+#updateSingle performs the glicko update
+#s is player score in the match
+#mu is the internal rating of p1
+#phi is the internal rating deviation of p1
+#muJ is the internal rating of the opponent
+#phiJ is the rd of the opponent
+#gJ is the opponents weight i.e. how heavily the opponent affects the update
+#eJ is the expected score given internal values
+#v is the variance which measures how important the fight is and how much rating can move
+#delta is the improvement signal which measures the difference between real performance and expectations
+#a is the log variance for sigma squared which is the starting point for the volatility update
+#f(x) is the root function which gives the new volatility from its root 
+#x represents the ln of the root squared during root finding
+#ex converts back from log space
+#num and den are the numerator piece and the denominator piece of the glicko 2 volatility equation
+#A and B are the bracket endpoints
+#K is the step count between brackets
+#fa and fb are the function result at the end points
+#C is the candidate for x from interpolation (linear)
+#fC is the function result at the point of the candidate
+#sigmaPrime is the new volatility
+#phiStar is the deviation with volatility before applying the match info
+#phiPrime is the updated deviation
+#muPrime is the updated internal rating
+def glicko2(r1, rd1, sigma1, r2, rd2, sigma2, result,
                       tau=0.5, eps=1e-6):
-       
+        #Turn result into a score 1 being p1 win 0.5 being a draw and 0.0 being a loss for p1
         if isinstance(result, (int, float)):
             s1 = float(result)  # expect 1 0.5 or 0
         else:
@@ -1880,86 +1936,92 @@ def glicko2_update_1v1(r1, rd1, sigma1, r2, rd2, sigma2, result,
                 s1 = 0.5
             else:
                 raise ValueError("result must be Win/Loss/Draw or 1/0/0.5")
-
-        s2 = 1.0 - s1 if s1 != 0.5 else 0.5
-
-   
+        #Handle opponent result
+        s2 = 1.0 - s1 if s1 != 0.5 else 0.5 
+        #convert to glicko algorithm scales
         SCALE = 173.7178
         PI2 = math.pi ** 2
 
-        def to_mu(r):  return (r - 1500.0) / SCALE
-        def to_phi(rd): return rd / SCALE
-        def to_r(mu):  return mu * SCALE + 1500.0
-        def to_rd(phi): return phi * SCALE
-
+        def toMu(r):  return (r - 1500.0) / SCALE
+        def toPhi(rd): return rd / SCALE
+        def toR(mu):  return mu * SCALE + 1500.0
+        def toRd(phi): return phi * SCALE
+        #Find impact score algorithm
         def g(phi):
             return 1.0 / math.sqrt(1.0 + (3.0 * phi * phi) / PI2)
-
-        def E(mu, mu_j, phi_j):
-            return 1.0 / (1.0 + math.exp(-g(phi_j) * (mu - mu_j)))
-
-        def update_single(r, rd, sigma, r_op, rd_op, s):
-            mu = to_mu(r)
-            phi = to_phi(rd)
-            mu_j = to_mu(r_op)
-            phi_j = to_phi(rd_op)
-
-            g_j = g(phi_j)
-            E_j = E(mu, mu_j, phi_j)
-
-            v = 1.0 / (g_j * g_j * E_j * (1.0 - E_j))
-            delta = v * g_j * (s - E_j)
-
+        #Find expected score algorithm
+        def E(mu, muJ, phiJ):
+            return 1.0 / (1.0 + math.exp(-g(phiJ) * (mu - muJ)))
+        #1v1 update
+        def update_single(r, rd, sigma, rOp, rdOp, s):
+            #Convert to glicko 2 internal scale
+            mu = toMu(r)
+            phi = toPhi(rd)
+            muJ = toMu(rOp)
+            phiJ = toPhi(rdOp)
+            #Figure out expected score
+            gJ = g(phiJ)
+            eJ = E(mu, muJ, phiJ)
+            #Calculate variance
+            v = 1.0 / (gJ * gJ * eJ * (1.0 - eJ))
+            #Calculate estimated improvement
+            delta = v * gJ * (s - eJ)
+            #Log volatility term used in updating volatility
             a = math.log(sigma * sigma)
-
+            #This function has to be solved in order to get the updated volatility
             def f(x):
                 ex = math.exp(x)
+                #Glicko 2 volatility update equation
                 num = ex * (delta * delta - phi * phi - v - ex)
                 den = 2.0 * (phi * phi + v + ex) * (phi * phi + v + ex)
                 return (num / den) - ((x - a) / (tau * tau))
-
-            # find A,B for root finding
+            # find A,B for root finding using bracketing so that fa and fb are different signs
             A = a
             if delta * delta > (phi * phi + v):
                 B = math.log(delta * delta - phi * phi - v)
             else:
+                #step left until sign changes
                 k = 1
                 B = a - k * tau
                 while f(B) < 0:
                     k += 1
                     B = a - k * tau
-
             fA = f(A)
             fB = f(B)
 
-            # Illinois algorithm
+            # Illinois algorithm (better algorithm for solving for x)
             while abs(B - A) > eps:
+                #interpolate root
                 C = A + (A - B) * fA / (fB - fA)
                 fC = f(C)
+                #keep part that brackets root
                 if fC * fB < 0:
                     A, fA = B, fB
                 else:
+                    #the illinois algorithm dampens one side in order to avoid stagnation
                     fA = fA / 2.0
                 B, fB = C, fC
+            #Figure out sigma prime
+            sigmaPrime = math.exp(A / 2.0)
+            #Pre rating deviation with volatility uncertainty
+            phiStar = math.sqrt(phi * phi + sigmaPrime * sigmaPrime)
+            #New deviation with variance included
+            phiPrime = 1.0 / math.sqrt((1.0 / (phiStar * phiStar)) + (1.0 / v))
+            #New rating calculated
+            muPrime = mu + (phiPrime * phiPrime) * gJ * (s - eJ)
+            #Convert rating values back to ordinary scale
+            return toR(muPrime), toRd(phiPrime), sigmaPrime
+        #Update both players 
+        newR1, newRd1, newSigma1 = update_single(r1, rd1, sigma1, r2, rd2, s1)
+        newR2, newRd2, newSigma2 = update_single(r2, rd2, sigma2, r1, rd1, s2)
+        #Return values
+        return newR1, newRd1, newSigma1, newR2, newRd2, newSigma2
 
-            sigma_prime = math.exp(A / 2.0)
-
-            phi_star = math.sqrt(phi * phi + sigma_prime * sigma_prime)
-            phi_prime = 1.0 / math.sqrt((1.0 / (phi_star * phi_star)) + (1.0 / v))
-            mu_prime = mu + (phi_prime * phi_prime) * g_j * (s - E_j)
-
-            return to_r(mu_prime), to_rd(phi_prime), sigma_prime
-
-        new_r1, new_rd1, new_sigma1 = update_single(r1, rd1, sigma1, r2, rd2, s1)
-        new_r2, new_rd2, new_sigma2 = update_single(r2, rd2, sigma2, r1, rd1, s2)
-
-        return new_r1, new_rd1, new_sigma1, new_r2, new_rd2, new_sigma2
-
-#Threading signals init
+#Threading signals init for image threading
 class ImageSignals(QObject):
     finished = pyqtSignal(bytes, object)
     error = pyqtSignal(str, object)
-#Worker init
+#Worker init for image threading
 class ImageWorker(QRunnable):
     def __init__(self, url, element):
         super().__init__()

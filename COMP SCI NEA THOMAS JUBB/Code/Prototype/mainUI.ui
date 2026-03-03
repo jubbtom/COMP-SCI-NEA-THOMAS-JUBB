@@ -1366,7 +1366,7 @@ p, li { white-space: pre-wrap; }
      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:3.3pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.1pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;Search For A Fighter...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
@@ -1501,12 +1501,17 @@ p, li { white-space: pre-wrap; }
       <height>41</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <pointsize>20</pointsize>
+     </font>
+    </property>
     <property name="html">
      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:15pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Charles Oliveira&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:20pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:15pt;&quot;&gt;Charles Oliveira&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
    <widget class="QDateEdit" name="modifyFighterBirthday">
@@ -1631,12 +1636,17 @@ p, li { white-space: pre-wrap; }
       <height>41</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <pointsize>20</pointsize>
+     </font>
+    </property>
     <property name="html">
      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:15pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Chute Boxe &lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:20pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:15pt;&quot;&gt;Chute Boxe &lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
    <widget class="QTextEdit" name="modifyFighterImageLink">
@@ -1648,12 +1658,17 @@ p, li { white-space: pre-wrap; }
       <height>41</height>
      </rect>
     </property>
+    <property name="font">
+     <font>
+      <pointsize>20</pointsize>
+     </font>
+    </property>
     <property name="html">
      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:15pt; font-weight:400; font-style:normal;&quot;&gt;
-&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;https://static0.thesportsterimages.com/wordpress/wp-content/uploads/2024/01/charles-oliveria.jpg&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:20pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:15pt;&quot;&gt;https://static0.thesportsterimages.com/wordpress/wp-content/uploads/2024/01/charles-oliveria.jpg&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
     </property>
    </widget>
    <widget class="QPushButton" name="modifyFighterImagePreview">
@@ -1677,6 +1692,11 @@ p, li { white-space: pre-wrap; }
       <width>681</width>
       <height>41</height>
      </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>15</pointsize>
+     </font>
     </property>
     <property name="text">
      <string>Belts: None</string>
@@ -2126,6 +2146,88 @@ p, li { white-space: pre-wrap; }
      <string>Submit Edits</string>
     </property>
    </widget>
+   <widget class="QTextEdit" name="modifyFighterHeight">
+    <property name="geometry">
+     <rect>
+      <x>490</x>
+      <y>230</y>
+      <width>141</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>20</pointsize>
+     </font>
+    </property>
+    <property name="html">
+     <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:20pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Height&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="label">
+    <property name="geometry">
+     <rect>
+      <x>490</x>
+      <y>200</y>
+      <width>81</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Height</string>
+    </property>
+   </widget>
+   <widget class="QTextEdit" name="modifyFighterReach">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>230</y>
+      <width>151</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>20</pointsize>
+     </font>
+    </property>
+    <property name="html">
+     <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
+&lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
+p, li { white-space: pre-wrap; }
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:20pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;Reach&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+   </widget>
+   <widget class="QLabel" name="modifyFighterBirthdayLabel_3">
+    <property name="geometry">
+     <rect>
+      <x>640</x>
+      <y>200</y>
+      <width>91</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="text">
+     <string>Reach</string>
+    </property>
+   </widget>
    <zorder>modifyFighterFightsTable</zorder>
    <zorder>modifyFighterAddFight</zorder>
    <zorder>modifyFighterDeleteFight</zorder>
@@ -2141,6 +2243,10 @@ p, li { white-space: pre-wrap; }
    <zorder>modifyFighterImage</zorder>
    <zorder>modifyFighterSubmit</zorder>
    <zorder>modifyFighterName</zorder>
+   <zorder>modifyFighterHeight</zorder>
+   <zorder>label</zorder>
+   <zorder>modifyFighterReach</zorder>
+   <zorder>modifyFighterBirthdayLabel_3</zorder>
   </widget>
   <widget class="QWidget" name="leaderboard" native="true">
    <property name="geometry">
@@ -2157,9 +2263,9 @@ p, li { white-space: pre-wrap; }
    <widget class="QTableView" name="leaderboardTableView">
     <property name="geometry">
      <rect>
-      <x>25</x>
+      <x>15</x>
       <y>340</y>
-      <width>1231</width>
+      <width>1241</width>
       <height>321</height>
      </rect>
     </property>
@@ -2186,11 +2292,14 @@ p, li { white-space: pre-wrap; }
     </property>
    </widget>
    <widget class="QPushButton" name="leaderboardOddsCheckerButton">
+    <property name="enabled">
+     <bool>true</bool>
+    </property>
     <property name="geometry">
      <rect>
-      <x>640</x>
-      <y>0</y>
-      <width>640</width>
+      <x>909</x>
+      <y>680</y>
+      <width>181</width>
       <height>41</height>
      </rect>
     </property>
@@ -2218,7 +2327,7 @@ p, li { white-space: pre-wrap; }
      </font>
     </property>
     <property name="text">
-     <string>Manage List...</string>
+     <string>Manage Fighters...</string>
     </property>
    </widget>
    <widget class="QLabel" name="leaderboardFighterName">
@@ -2660,10 +2769,10 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="leaderboardFighterBelts">
     <property name="geometry">
      <rect>
-      <x>310</x>
-      <y>140</y>
-      <width>451</width>
-      <height>131</height>
+      <x>30</x>
+      <y>240</y>
+      <width>751</width>
+      <height>41</height>
      </rect>
     </property>
     <property name="palette">
@@ -3098,7 +3207,7 @@ p, li { white-space: pre-wrap; }
       <x>10</x>
       <y>120</y>
       <width>371</width>
-      <height>161</height>
+      <height>121</height>
      </rect>
     </property>
     <property name="font">
@@ -3552,9 +3661,9 @@ p, li { white-space: pre-wrap; }
    <widget class="QTextEdit" name="leaderboardFighterSearch">
     <property name="geometry">
      <rect>
-      <x>30</x>
+      <x>10</x>
       <y>300</y>
-      <width>691</width>
+      <width>711</width>
       <height>41</height>
      </rect>
     </property>
@@ -3562,8 +3671,26 @@ p, li { white-space: pre-wrap; }
      <string>&lt;!DOCTYPE HTML PUBLIC &quot;-//W3C//DTD HTML 4.0//EN&quot; &quot;http://www.w3.org/TR/REC-html40/strict.dtd&quot;&gt;
 &lt;html&gt;&lt;head&gt;&lt;meta name=&quot;qrichtext&quot; content=&quot;1&quot; /&gt;&lt;style type=&quot;text/css&quot;&gt;
 p, li { white-space: pre-wrap; }
-&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:3.3pt; font-weight:400; font-style:normal;&quot;&gt;
+&lt;/style&gt;&lt;/head&gt;&lt;body style=&quot; font-family:'MS Shell Dlg 2'; font-size:8.1pt; font-weight:400; font-style:normal;&quot;&gt;
 &lt;p style=&quot; margin-top:0px; margin-bottom:0px; margin-left:0px; margin-right:0px; -qt-block-indent:0; text-indent:0px;&quot;&gt;&lt;span style=&quot; font-size:18pt;&quot;&gt;Search For A Fighter...&lt;/span&gt;&lt;/p&gt;&lt;/body&gt;&lt;/html&gt;</string>
+    </property>
+   </widget>
+   <widget class="QPushButton" name="leaderboardSurveyButton">
+    <property name="geometry">
+     <rect>
+      <x>1089</x>
+      <y>680</y>
+      <width>191</width>
+      <height>41</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Survey...</string>
     </property>
    </widget>
    <zorder>leaderboardTableView</zorder>
@@ -3575,6 +3702,7 @@ p, li { white-space: pre-wrap; }
    <zorder>leaderboardFighterBelts</zorder>
    <zorder>leaderboardFighterRecord</zorder>
    <zorder>leaderboardImage</zorder>
+   <zorder>leaderboardSurveyButton</zorder>
   </widget>
   <widget class="QWidget" name="fighterProfiles" native="true">
    <property name="geometry">
@@ -4032,14 +4160,14 @@ p, li { white-space: pre-wrap; }
     <property name="geometry">
      <rect>
       <x>460</x>
-      <y>400</y>
+      <y>390</y>
       <width>341</width>
       <height>41</height>
      </rect>
     </property>
     <property name="font">
      <font>
-      <pointsize>15</pointsize>
+      <pointsize>20</pointsize>
       <underline>true</underline>
      </font>
     </property>
@@ -4048,27 +4176,6 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="alignment">
      <set>Qt::AlignCenter</set>
-    </property>
-   </widget>
-   <widget class="QLabel" name="fighterProfileNotableWins">
-    <property name="geometry">
-     <rect>
-      <x>140</x>
-      <y>370</y>
-      <width>1121</width>
-      <height>31</height>
-     </rect>
-    </property>
-    <property name="font">
-     <font>
-      <pointsize>15</pointsize>
-     </font>
-    </property>
-    <property name="text">
-     <string>Notable Fights: </string>
-    </property>
-    <property name="alignment">
-     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
    <widget class="QLabel" name="fighterProfileImage">
@@ -4505,7 +4612,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QPushButton" name="fighterProfilePositiveRating">
     <property name="geometry">
      <rect>
-      <x>10</x>
+      <x>270</x>
       <y>400</y>
       <width>21</width>
       <height>25</height>
@@ -4525,7 +4632,7 @@ p, li { white-space: pre-wrap; }
    <widget class="QPushButton" name="fighterProfileNegativeRating">
     <property name="geometry">
      <rect>
-      <x>120</x>
+      <x>390</x>
       <y>400</y>
       <width>21</width>
       <height>25</height>
@@ -4545,9 +4652,9 @@ p, li { white-space: pre-wrap; }
    <widget class="QLabel" name="fighterApprovalRating">
     <property name="geometry">
      <rect>
-      <x>30</x>
+      <x>310</x>
       <y>390</y>
-      <width>91</width>
+      <width>61</width>
       <height>41</height>
      </rect>
     </property>
@@ -4588,16 +4695,16 @@ p, li { white-space: pre-wrap; }
      <rect>
       <x>20</x>
       <y>70</y>
-      <width>711</width>
-      <height>311</height>
+      <width>531</width>
+      <height>301</height>
      </rect>
     </property>
     <widget class="QLabel" name="nodatamessage">
      <property name="geometry">
       <rect>
-       <x>90</x>
-       <y>80</y>
-       <width>551</width>
+       <x>40</x>
+       <y>90</y>
+       <width>361</width>
        <height>131</height>
       </rect>
      </property>
@@ -4625,6 +4732,120 @@ p, li { white-space: pre-wrap; }
       <width>1231</width>
       <height>231</height>
      </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fighterProfileHeightLabel">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>90</y>
+      <width>261</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>25</pointsize>
+      <underline>false</underline>
+     </font>
+    </property>
+    <property name="text">
+     <string>Height</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fighterProfileReachLabel">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>160</y>
+      <width>261</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>25</pointsize>
+      <underline>false</underline>
+     </font>
+    </property>
+    <property name="text">
+     <string>Reach</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fighterProfileStreakLabel">
+    <property name="geometry">
+     <rect>
+      <x>510</x>
+      <y>230</y>
+      <width>261</width>
+      <height>61</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>25</pointsize>
+      <underline>false</underline>
+     </font>
+    </property>
+    <property name="text">
+     <string>Winstreak</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="fighterProfileNotableFights">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>360</y>
+      <width>1121</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Notable Fights: </string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
+    </property>
+   </widget>
+   <widget class="QLabel" name="userlabeldk">
+    <property name="geometry">
+     <rect>
+      <x>10</x>
+      <y>400</y>
+      <width>161</width>
+      <height>31</height>
+     </rect>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>200</width>
+      <height>200</height>
+     </size>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>User approval rating</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignLeading|Qt::AlignLeft|Qt::AlignVCenter</set>
     </property>
    </widget>
   </widget>
@@ -4665,8 +4886,8 @@ p, li { white-space: pre-wrap; }
    <widget class="QPushButton" name="surveySubmitButton">
     <property name="geometry">
      <rect>
-      <x>450</x>
-      <y>630</y>
+      <x>870</x>
+      <y>640</y>
       <width>401</width>
       <height>51</height>
      </rect>
@@ -5161,6 +5382,38 @@ p, li { white-space: pre-wrap; }
     </property>
     <property name="scaledContents">
      <bool>true</bool>
+    </property>
+   </widget>
+   <widget class="QComboBox" name="favouriteFighterCombo">
+    <property name="geometry">
+     <rect>
+      <x>300</x>
+      <y>640</y>
+      <width>561</width>
+      <height>51</height>
+     </rect>
+    </property>
+   </widget>
+   <widget class="QLabel" name="surveyTextLabel4_3">
+    <property name="geometry">
+     <rect>
+      <x>40</x>
+      <y>641</y>
+      <width>261</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>25</pointsize>
+      <underline>false</underline>
+     </font>
+    </property>
+    <property name="text">
+     <string>Favourite Fighter:</string>
+    </property>
+    <property name="alignment">
+     <set>Qt::AlignCenter</set>
     </property>
    </widget>
   </widget>
@@ -6146,7 +6399,7 @@ p, li { white-space: pre-wrap; }
      <set>Qt::AlignCenter</set>
     </property>
    </widget>
-   <widget class="QLabel" name="advantageFighterLabel_3">
+   <widget class="QLabel" name="EntertainmentResult">
     <property name="geometry">
      <rect>
       <x>460</x>
@@ -6378,15 +6631,33 @@ p, li { white-space: pre-wrap; }
      <string>Submit Field Edits</string>
     </property>
    </widget>
+   <widget class="QPushButton" name="optionsAutoAssign">
+    <property name="geometry">
+     <rect>
+      <x>890</x>
+      <y>70</y>
+      <width>241</width>
+      <height>51</height>
+     </rect>
+    </property>
+    <property name="font">
+     <font>
+      <pointsize>15</pointsize>
+     </font>
+    </property>
+    <property name="text">
+     <string>Auto-Assign Belts</string>
+    </property>
+   </widget>
   </widget>
-  <zorder>oddsPredictor</zorder>
-  <zorder>survey</zorder>
   <zorder>login</zorder>
-  <zorder>leaderboard</zorder>
-  <zorder>fighterProfiles</zorder>
+  <zorder>oddsPredictor</zorder>
   <zorder>options</zorder>
+  <zorder>survey</zorder>
   <zorder>modifyFighter</zorder>
   <zorder>modifyFighterList</zorder>
+  <zorder>leaderboard</zorder>
+  <zorder>fighterProfiles</zorder>
  </widget>
  <customwidgets>
   <customwidget>
