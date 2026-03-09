@@ -5,6 +5,9 @@ from datetime import datetime, date
 import hashlib
 import math
 import os
+print("#Configuring DPI settings so the UI isn't all messed up")
+os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
+os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "RoundPreferFloor"
 import re
 import sys
 import time
@@ -23,11 +26,6 @@ from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.figure import Figure
 from qclickablelabel import QClickableLabel
 from ui import Ui_mainWindow
-
-#Configuring DPI settings so the UI isn't all messed up
-print("#Configuring DPI settings so the UI isn't all messed up")
-os.environ["QT_ENABLE_HIGHDPI_SCALING"] = "1"
-os.environ["QT_SCALE_FACTOR_ROUNDING_POLICY"] = "RoundPreferFloor"
 
 #Dealing with exceptions
 def exceptHook(exc_type,exc,tb):
@@ -203,7 +201,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     print("Commited")
                     return None
                 else:
-                    QtWidgets.QMessageBox.critical(None, "SQL Error", "Querytype out of bounds")
+                    QtWidgets.QMessageBox.critical(None, "SQL Error", "Querytype of query"+str(statementSQL)+"out of bounds")
             else:
                 print("SQL ERROR: cnx is none")
         except pyodbc.DatabaseError as err:
@@ -1336,8 +1334,8 @@ WHERE FighterFights.FighterID = ?
     ##Initialise fighter proifle page on admin side
     def showProfileAdmin(self,index):
         self.fighterId = index.siblingAtColumn(0).data() 
-        print("display profile of fighterID "+str(self.fighterId))
-        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterId=?","one",(self.fighterId))
+        print("display profile of fighterID "+str(self.fighterId,))
+        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterId=?","one",(self.fighterId,))
         print("fighterdata:"+str(fighterData))
         self.ui.modifyFighterTitle.setText("Editing Fighter:"+str(fighterData[1]))
         self.ui.modifyFighterName.setPlainText(str(fighterData[1]))
@@ -1669,27 +1667,7 @@ WHERE FighterFights.FighterID = ?
         ax.set_facecolor("none") 
         canvas.draw()
         #Deal with streak 
-        query="""DECLARE @FighterID INT = ?;
-SELECT
-    (
-        SELECT TOP 1 Fighters.Name
-        FROM FighterFights
-        JOIN Fighters ON Fighters.FighterID = FighterFights.FighterID
-        WHERE FighterFights.FightID = Fights.FightID
-          AND FighterFights.FighterID <> @FighterID
-    ) AS [Opponent],
-    Events.Name AS [Event],
-    Events.Date AS [Date],
-    FighterFights.Result AS [Result],
-    Fights.Method AS [Method],
-    Fights.EndRound AS [Round],
-    CONVERT(char(5), Fights.EndTime, 108) AS [Time]
-FROM FighterFights
-JOIN Fights ON Fights.FightID = FighterFights.FightID
-JOIN Events ON Events.EventID = Fights.EventID
-WHERE FighterFights.FighterID = @FighterID
-ORDER BY Events.Date DESC;"""
-        fightRows=self.connect(query,"maFny",self.userProfileFighterID)
+        fightRows=self.connect(query,"many",self.userProfileFighterID)
         if fightRows is None:
             self.ui.fighterProfileStreakLabel.setText("No Streak")
         else:
