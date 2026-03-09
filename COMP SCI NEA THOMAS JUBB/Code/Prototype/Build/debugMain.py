@@ -1,7 +1,7 @@
 
 import base64
 import ctypes
-from datetime import datetime
+from datetime import datetime, date
 import hashlib
 import math
 import os
@@ -39,11 +39,8 @@ sys.excepthook=exceptHook
 print("Main Window")
 class MainWindow(QtWidgets.QMainWindow):  
     def __init__(self):
-        global validationQueue
-        validationQueue=[]
-        self.pendingEdits={} #table, key, column
-        global fightsTablePendingEdits
-        fightsTablePendingEdits=[]
+        self.pendingEdits={} #formatted as table, key, column
+        self.fightsTablePendingEdits=[]
         super().__init__()
         self.ui = Ui_mainWindow()
         self.ui.setupUi(self)
@@ -52,39 +49,29 @@ class MainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle("MMA Companion")
         iconPath = os.path.join(os.path.dirname(__file__), "..", "Assets", "icon.ico")
         self.setWindowIcon(QIcon(iconPath))
-        #modify fighter globals
-        global modFighterCurrentId
-        modFighterCurrentId = None
-        #odds calc globals
-        global rightComboActive
-        global oddsComboCurrentWeightClass
-        global leftComboActive
-        global selectedA
-        global selectedB
-        global updatingTables
-        rightComboActive = False
-        leftComboActive = False
-        updatingTables = False
-        oddsComboCurrentWeightClass = None
-        selectedA=0
-        selectedB=0
-        #leaderboard globals
-        global leaderboardCurrentId
-        leaderboardCurrentId = None
-        #fighter profile globals
-        global userProfileFighterID
-        userProfileFighterID = None
-        #options globals
-        global eventClickedIndex
-        global beltClickedIndex
-        #survey globals
-        global newAccount
-        global subOpinion
-        global koOpinion
-        global decOpinion
-        subOpinion=1
-        koOpinion=1
-        decOpinion=1
+        #modify fighter 
+        self.modFighterCurrentId = None
+        #odds calc 
+        self.rightComboActive = False
+        self.leftComboActive = False
+        self.updatingTables = False
+        self.oddsComboCurrentWeightClass = None
+        self.selectedA=0
+        self.selectedB=0
+        #leaderboard 
+        self.leaderboardCurrentId = None
+        #fighter profile 
+        self.userProfileFighterID = None
+        #options 
+        self.eventClickedIndex = None
+        self.beltClickedIndex = None
+        #survey 
+        self.newAccount = None
+        self.subOpinion=1
+        self.koOpinion=1
+        self.decOpinion=1
+        #Other session vars
+        self.activePage=None
                 
         #init options elements
         self.ui.optionsReturnButton.clicked.connect(lambda:self.loadModifyFighter())
@@ -100,8 +87,9 @@ class MainWindow(QtWidgets.QMainWindow):
         #init fighterProfiles elements
         print("#init fighterProfiles elements")
         self.ui.fighterProfileReturn.clicked.connect(lambda:self.initLeaderboard())
-        self.ui.fighterProfilePositiveRating.clicked.connect(lambda:self.voteApproval(userProfileFighterID,1))
-        self.ui.fighterProfileNegativeRating.clicked.connect(lambda:self.voteApproval(userProfileFighterID,0))
+        self.ui.fighterProfilePositiveRating.clicked.connect(lambda:self.voteApproval(self.userProfileFighterID,1))
+        self.ui.fighterProfileNegativeRating.clicked.connect(lambda:self.voteApproval(self.userProfileFighterID,0))
+        self.ui.fighterProfileFights.setEditTriggers(QAbstractItemView.EditTrigger.NoEditTriggers)
         
         #init leaderboard elements
         print("#init leaderboard elements")
@@ -120,8 +108,8 @@ class MainWindow(QtWidgets.QMainWindow):
             
         #init login elements
         print("#init login elements")
-        self.ui.loginLoginButton.clicked.connect(lambda:self.accounts.login(self))
-        self.ui.loginSignUpButton.clicked.connect(lambda:self.accounts.signUp(self))
+        self.ui.loginLoginButton.clicked.connect(self.login)
+        self.ui.loginSignUpButton.clicked.connect(self.signUp)
             
         #init modifyFighter elements
         print("#init modifyFighter elements")
@@ -219,7 +207,7 @@ class MainWindow(QtWidgets.QMainWindow):
             else:
                 print("SQL ERROR: cnx is none")
         except pyodbc.DatabaseError as err:
-            QtWidgets.QMessageBox.critical(None, "SQL Error", str(err))
+            QtWidgets.QMessageBox.critical(None, "SQL Error", "Database rejection.")
         finally:
             if 'cnx' in locals() and cnx:
                 cnx.close()
@@ -308,7 +296,7 @@ class MainWindow(QtWidgets.QMainWindow):
         for key in keysToApply:
             tableName, pkCol, primaryKey, columnName = key
             newValue = self.pendingEdits[key]
-            #Belts dupe check
+            #Belts title validation
             if tableName == "Belts" and columnName == "WeightClass":
                 #Validate belts
                 beltCheck = self.connect("SELECT COUNT(*) FROM Belts WHERE WeightClass=?","one",(newValue,))
@@ -324,12 +312,23 @@ class MainWindow(QtWidgets.QMainWindow):
                     if newValue=="RETIRED":
                             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Invalid Belt name")
                             self.initOptions()
-                            return    
+                            return  
+                    if len(newValue)>60:
+                            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Belt name too long.")
+                            self.initOptions()
+                            return     
                     if beltCheck is not None:
                         if beltCheck[0] > 0:
                             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Belt already exists")
                             self.initOptions()
                             return
+            #Belts fighter lookup check
+            if tableName == "Belts" and columnName == "FighterID":
+                FighterCheck = self.connect("SELECT FighterID FROM Belts WHERE FighterID=?","one",(newValue,))
+                if FighterCheck == None:
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Fighter doesn't exist.")
+                    self.initOptions()
+                    return    
             #Events Validation
             if tableName == "Events" and columnName in ["Name","Location","Date"]:
                 eventRow = self.connect("SELECT Name, Location, Date FROM Events WHERE EventID=?","one",(primaryKey,))
@@ -339,14 +338,29 @@ class MainWindow(QtWidgets.QMainWindow):
                     if not name.strip():
                         QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Event name is blank")
                         self.initOptions()
-                        return    
+                        return   
+                    if len(name) > 80:
+                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Event name Too long")
+                        self.initOptions()
+                        return
+                        
                 if columnName == "Location":
                     location = newValue
+                    if len(location) > 100:
+                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Event location Too long")
+                        self.initOptions()
+                        return
+                        
                 if columnName == "Date":
                     date = newValue
                     #date validation
                     try:
-                        datetime.strptime(date, "%Y-%m-%d")
+                        eventDate=datetime.strptime(date, "%Y-%m-%d").date()
+                        today = date.today()
+                        if today < eventDate:
+                            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Date can't be in the future")
+                            self.initOptions()
+                            return
                     except:
                         QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Date must be in YYYY-MM-DD format")
                         self.initOptions()
@@ -367,22 +381,21 @@ class MainWindow(QtWidgets.QMainWindow):
             del self.pendingEdits[key]
     ##record fighter fights table edit
     def recordFightsEdit(self,item):
-        global fightsTablePendingEdits
         row=item.row()
         col=item.column()
-        fightsTablePendingEdits.append([row,col])
+        self.fightsTablePendingEdits.append([row,col])
         print("Adding to edit queue:",row,col)
     ##submit fighter fights table edit
     def submitFighterFights(self):
-        global fighterId, fightsTablePendingEdits
+        self.fighterId
         #Check for model existing
         model = self.ui.modifyFighterFightsTable.model()
         if model is None:
             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No model")
             return
         #List out all of the unique edits
-        uniqueEdits = list({(r, c) for r, c in fightsTablePendingEdits})
-        fightsTablePendingEdits.clear()
+        uniqueEdits = list({(r, c) for r, c in self.fightsTablePendingEdits})
+        self.fightsTablePendingEdits.clear()
 
         for (row, col) in uniqueEdits:
             # ignore hidden columns
@@ -413,7 +426,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 if opponentCount[0]!=1:
                     QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "OpponentID doesn't exist")
                     continue
-                if str(newOppID_int) == str(fighterId):
+                if str(newOppID_int) == str(self.fighterId):
                     QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "OpponentID can't equal the current fighter.")
                     continue
 
@@ -427,7 +440,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.connect(
                     "DELETE FROM dbo.FighterFights WHERE FightID=? AND FighterID<>?;",
                     "none",
-                    (fightID, fighterId)
+                    (fightID, self.fighterId)
                 )
                 self.connect(
                     "INSERT INTO dbo.FighterFights (FightID, FighterID, Corner, Result) VALUES (?, ?, NULL, ?);",
@@ -457,7 +470,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 self.connect(
                     "UPDATE dbo.FighterFights SET Result=? WHERE FightID=? AND FighterID<>?;",
                     "none",
-                    (oppResult, fightID, fighterId)
+                    (oppResult, fightID, self.fighterId)
                 )
                 continue
             #  4 EventID,  6 Method,  7 Round,  8 Time,  9 Title
@@ -472,28 +485,46 @@ class MainWindow(QtWidgets.QMainWindow):
                     except ValueError:
                         QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "EventID must be a number (or None).")
                         continue
+                eventDate = self.connect( "SELECT TRY_CONVERT(date, [Date]) FROM Events WHERE EventID=?;","one",(eventVal,))[0]
+                #Checking if the event actually exists (lookup validation)
+                eventExists=self.connect("SELECT EventID FROM Events WHERE EventID=?","one",(eventVal))
+                if eventExists==None:
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "EventID must exist.")
+                    continue
                 #Checking if the event has already been fought on by the fighter
                 eventAlready=self.connect("""SELECT COUNT(*) FROM Fights 
 JOIN FighterFights ON FighterFights.FightID = Fights.FightID
 WHERE Fights.EventID = ?
-AND FighterFights.FighterID = ?;""","one",(eventVal,fighterId))
+AND FighterFights.FighterID = ?;""","one",(eventVal,self.fighterId))
                 if eventAlready[0] != 0:
-                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Fighter ID "+str(fighterId)+" already has a fight on event "+str(eventVal))
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Fighter ID "+str(self.fighterId)+" already has a fight on event "+str(eventVal))
                     continue
                 #Checking if the fighter has fought more than 12 times per year
                 eventTimes=self.connect("""SELECT COUNT(*) AS FightCountSameYear
-FROM FighterFights ff
-JOIN Fights f  ON f.FightID = ff.FightID
-JOIN Events e  ON e.EventID = f.EventID
-WHERE ff.FighterID = ?
+FROM FighterFights
+JOIN Fights  ON Fights.FightID = FighterFights.FightID
+JOIN Events e  ON e.EventID = Fights.EventID
+WHERE FighterFights.FighterID = ?
   AND YEAR(TRY_CONVERT(date, e.[Date])) = (
       SELECT YEAR(TRY_CONVERT(date, e2.[Date]))
       FROM Events e2
       WHERE e2.EventID = ?
   )
-  AND TRY_CONVERT(date, e.[Date]) IS NOT NULL;""","one",(fighterId,eventVal))
+  AND TRY_CONVERT(date, e.[Date]) IS NOT NULL;""","one",(self.fighterId,eventVal))
                 if eventTimes[0] >= 12:
-                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Fighter ID "+str(fighterId)+" has an impossible number of fights (more than 12 per year)")
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Fighter ID "+str(self.fighterId)+" has an impossible number of fights (more than 12 per year)")
+                    continue
+                #Checking if a fighter hasn't fought for at least a week
+                fightsGapCheck=self.connect("""SELECT Fights.FightID, Events.EventID, TRY_CONVERT(date, Events.[Date]) AS FightDate
+                FROM FighterFights
+                JOIN Fights  ON Fights.FightID = FighterFights.FightID
+                JOIN Events  ON Events.EventID = Fights.EventID
+                WHERE FighterFights.FighterID = ?
+                AND Fights.FightID <> ?
+                AND TRY_CONVERT(date, e.[Date]) IS NOT NULL
+                AND ABS(DATEDIFF(day, TRY_CONVERT(date, Events.[Date]), ?)) < 7;""","one",(self.fighterId,fightID,eventDate))
+                if fightsGapCheck and len(fightsGapCheck)>0:
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Fighter ID "+str(self.fighterId)+" has fought less than a week ago.")
                     continue
                 self.connect("UPDATE dbo.Fights SET EventID=? WHERE FightID=?;", "none", (eventVal, fightID))
                 continue
@@ -512,23 +543,27 @@ WHERE ff.FighterID = ?
                 else:
                     try:
                         roundVal = int(value)
+                        if roundVal < 1 or roundVal > 5:
+                            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Round must be in range 1-5")
+                            continue
                     except ValueError:
-                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Round must be a number (or None).")
+                        QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Round must be a number.")
                         continue
                 self.connect("UPDATE dbo.Fights SET EndRound=? WHERE FightID=?;", "none", (roundVal, fightID))
                 continue
 
             if col == 8:  # EndTime 
                 t = value
-                if t is not None and len(t) == 5:  #normalizing time
-                    t = t + ":00"
+                if t is not None: #normalizing time
+                    t=t.strip()
+                    t = "00:0"+t
                 #check format of time
-                TIME_HHMMSS = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$")
-                if t is None or  bool(TIME_HHMMSS.match(t.strip())) == False:
-                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Endtime either formatted badly or doesn't exist. (Format 00:0M:SS)")
+                timeCompile = re.compile(r"^(?:[01]\d|2[0-3]):[0-5]\d:[0-5]\d$")
+                if t is None or  bool(timeCompile.match(t.strip())) == False:
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Endtime either formatted badly or doesn't exist. (Format M:SS)")
                     continue
                 #check that fight is physically possible
-                strippedT = datetime.datetime.strptime(t.strip(), "%H:%M:%S").time()
+                strippedT = datetime.strptime(t.strip(), "%H:%M:%S").time()
                 if (strippedT.hour, strippedT.minute, strippedT.second) <= (0, 0, 1) or (strippedT.hour, strippedT.minute, strippedT.second) > (0, 5, 0):
                     QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Endtime physically impossible. Check your data inputs.")
                     continue
@@ -536,6 +571,9 @@ WHERE ff.FighterID = ?
                 continue
             
             if col == 9:  # Title
+                if len(value)>60:
+                    QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Title length too long.")
+                    continue
                 self.connect("UPDATE dbo.Fights SET Title=? WHERE FightID=?;", "none", (value, fightID))
                 continue
         self.submitProfile()
@@ -631,21 +669,37 @@ WHERE ff.FighterID = ?
         return currentRow[length1]
     ##Return levenshtein distances of the fighter table so you can sort it
     def tableDistances(self,searchTerm):
+        #Normalise everything and build a list of distances
         rows= self.connect("SELECT FighterID, Name FROM Fighters;","many",None)
+        if not rows:
+            return []
         distances=[]
-        #assign each row a distance
-        for i in range(len(rows)):
-            current=rows[i][1]
-            distance=self.levenshtien(current,searchTerm)
-            distances.append((rows[i][0],distance))
-        #sort the list by ascending distance
-        distances.sort(key=lambda x:x[1])   
-        return distances
-                                          
+        searchTerm = str(searchTerm).lower().strip()
+        for fighterID, fighterName in rows:
+            currentName = str(fighterName).lower().strip()
+            distance = self.levenshtien(currentName, searchTerm)
+            distances.append((fighterID, distance, currentName))
+        #Insertion sort
+        for i in range(1, len(distances)):
+            currentItem = distances[i]
+            j = i - 1
+            while j >= 0 and (
+                distances[j][1] > currentItem[1] or
+                (distances[j][1] == currentItem[1] and distances[j][2] > currentItem[2])
+            ):
+                distances[j + 1] = distances[j]
+                j -= 1
+            distances[j + 1] = currentItem
+        #Remove other unnecessary fields to give off result table
+        orderedDistances = []
+        for fighterID, distance, fighterName in distances:
+            orderedDistances.append((fighterID, distance))
+        return orderedDistances
+                
     #Navigation subroutines 
     def navigate(self,page):
         #Set active page
-        global activePage
+        self.activePage
         activePage = page
         pages=[
         self.ui.fighterProfiles,
@@ -663,9 +717,6 @@ WHERE ff.FighterID = ?
      
     #Star selection subroutines
     def starClicked(self,row,number):
-        global subOpinion
-        global koOpinion
-        global decOpinion
         #Setting stars
         subStars=[self.ui.surveyStarSub1, self.ui.surveyStarSub2, self.ui.surveyStarSub3, self.ui.surveyStarSub4, self.ui.surveyStarSub5]
         koStars=[self.ui.surveyStarKo1, self.ui.surveyStarKo2, self.ui.surveyStarKo3, self.ui.surveyStarKo4, self.ui.surveyStarKo5]
@@ -692,14 +743,14 @@ WHERE ff.FighterID = ?
                 stars[i].setPixmap(QPixmap(imagePath))
         #Set opinion number
         if row == "sub":
-            subOpinion = number + 1
-            print(subOpinion)
+            self.subOpinion = number + 1
+            print(self.subOpinion)
         elif row == "ko":
-            koOpinion = number + 1
-            print(koOpinion)
+            self.koOpinion = number + 1
+            print(self.koOpinion)
         elif row == "dec":
-            decOpinion = number + 1
-            print(decOpinion)
+            self.decOpinion = number + 1
+            print(self.decOpinion)
         
             
     
@@ -720,99 +771,101 @@ WHERE ff.FighterID = ?
             QtWidgets.QMessageBox.critical(None, "Opposite result error", "No counterpart found (wrong corner or result)")   
             
     #Login and survey subroutines
-    class accounts():
-        def __init__(self):
-            pass
-        #Login subroutine
-        def login(self):
-            print("Login")
-            #Fetch login details from textboxes
-            username = self.ui.loginUsernameText.toPlainText()
-            password = self.ui.loginPasswordText.toPlainText()
-            #Check for username and also fetch login details
-            row=self.connect("SELECT * FROM dbo.Users WHERE Username = ?","one",(username,))
-            if row:
-                storedPassword=row[0]
-                print(storedPassword)
-                #Split hash and salt and then decode them
-                base64salt,base64hash=storedPassword.split(":") 
-                decodedHash= base64.b64decode(base64hash)
-                decodedSalt = base64.b64decode(base64salt)
-                #Recompute Hash and then compare to check password is correct
-                newHash = hashlib.pbkdf2_hmac(
-                    'sha256',
-                    password.encode(),
-                    decodedSalt,
-                    100000
-                )       
-                if decodedHash != newHash:
-                    print("Incorrect Password")
-                    self.ui.loginError.setText("Incorrect Password")
-                    return
-                if decodedHash == newHash:
-                    print("Login success")
-                    #set session variables and navigate to wherever is necessary depending on whether the user is an admin or not
-                    global isAdmin
-                    global usernameToken
-                    isAdmin=row[6]
-                    usernameToken=username
-                    if isAdmin==1:
-                        print("Login as admin")
-                        self.loadModifyFighter()
-                    else:
-                        print("Login as regular")
-                        self.initLeaderboard()
-            else:
+    #Login subroutine
+    def login(self):
+        print("Login")
+        #Fetch login details from textboxes
+        username = self.ui.loginUsernameText.toPlainText()
+        password = self.ui.loginPasswordText.toPlainText()
+        if len(username) > 60:
+            self.ui.loginError.setText("Username too long.")
+            return
+        if username.strip()=="" or password.strip()=="":
+            self.ui.loginError.setText("Please enter a username and password.")
+            return
+        #Check for username and also fetch login details
+        row=self.connect("SELECT * FROM dbo.Users WHERE Username = ?","one",(username,))
+        if row:
+            storedPassword=row[0]
+            verificationResult=self.verifyPassword(password,storedPassword)   
+            if verificationResult==False:
+                print("Incorrect Password")
+                self.ui.loginError.setText("Incorrect Password")
+                return
+            if verificationResult==True:
+                print("Login success")
+                #set session variables and navigate to wherever is necessary depending on whether the user is an admin or not
+                self.isAdmin=row[6]
+                self.usernameToken=username
+                if self.isAdmin==1:
+                    print("Login as admin")
+                    self.loadModifyFighter()
+                else:
+                    print("Login as regular")
+                    self.initLeaderboard()
+        else:
                 print("Account doesn't exist") 
                 self.ui.loginError.setText("Account doesn't exist")    
         #Signup subroutine
-        def signUp(self):
-            #Bring username from textboxes
-            username = self.ui.loginUsernameText.toPlainText()
-            password = self.ui.loginPasswordText.toPlainText()
-            #Check if username is already in use
-            usernameCheck=self.connect("SELECT 1 FROM dbo.Users WHERE Username = ?","one",(username,))
-            if usernameCheck:
-                print("Username already exists")
-                self.ui.loginError.setText("Username already exists")
-                return
-            print("signUp")
-            #Salt and hash password
-            salt = os.urandom(16)
-            hash_bytes = hashlib.pbkdf2_hmac(
-                'sha256',
-                password.encode(),
-                salt,
-                100000          
-            )
-            base64salt = base64.b64encode(salt).decode()
-            base64hash = base64.b64encode(hash_bytes).decode()
-            hashedPassword=f"{base64salt}:{base64hash}"
-            print(username)
-            print(hashedPassword)
-            #Insert new account into Users table
-            self.connect("INSERT INTO Users (Username, HashedPassword,SubOpinion,KoOpinion,DecisionOpinion,isAdmin,favouriteFighter) VALUES (?, ?,1,1,1,0,0)","none",(username, hashedPassword))     
-            #Set session variables and navigate to leaderboard
-            global isAdmin
-            global usernameToken
-            usernameToken = username
-            isAdmin = 0
-            self.initSurvey(False)
+    def signUp(self):
+        #Bring username from textboxes
+        username = self.ui.loginUsernameText.toPlainText()
+        password = self.ui.loginPasswordText.toPlainText()
+        #Check if username is already in use
+        usernameCheck=self.connect("SELECT 1 FROM dbo.Users WHERE Username = ?","one",(username,))
+        if usernameCheck:
+            print("Username already exists")
+            self.ui.loginError.setText("Username already exists")
+            return
+        print("signUp")
+        #Salt and hash password
+        hashedPassword=self.hashPassword(password)
+        #Insert new account into Users table
+        self.connect("INSERT INTO Users (Username, HashedPassword,SubOpinion,KoOpinion,DecisionOpinion,isAdmin,favouriteFighter) VALUES (?, ?,1,1,1,0,0)","none",(username, hashedPassword))     
+        #Set session variables and navigate to leaderboard
+        self.usernameToken = username
+        self.isAdmin = 0
+        self.initSurvey(False)
+    #Verify password
+    def verifyPassword(self,password,storedPassword):
+        #Split hash and salt and then decode them
+        base64salt,base64hash=storedPassword.split(":") 
+        decodedHash= base64.b64decode(base64hash)
+        decodedSalt = base64.b64decode(base64salt)
+        #Recompute Hash and then compare to check password is correct
+        newHash = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode(),
+            decodedSalt,
+            100000
+        )       
+        if decodedHash != newHash:
+            return False
+        if decodedHash == newHash:
+            return True
+    #Hash password
+    def hashPassword(self,password):
+        salt = os.urandom(16)
+        hash_bytes = hashlib.pbkdf2_hmac(
+            'sha256',
+            password.encode(),
+            salt,
+            100000          
+        )
+        base64salt = base64.b64encode(salt).decode()
+        base64hash = base64.b64encode(hash_bytes).decode()
+        hashedPassword=f"{base64salt}:{base64hash}"
+        return hashedPassword
     #Submit survey
     def surveySubmit(self):
         #Submit survey results
-        global subOpinion
-        global koOpinion
-        global decOpinion
-        global newAccount
-        print(subOpinion,decOpinion,koOpinion)
+        print(self.subOpinion,self.decOpinion,self.koOpinion)
         favouriteFighter = self.ui.favouriteFighterCombo.currentData()
-        self.connect("UPDATE dbo.Users SET SubOpinion = ?, KoOpinion = ?, DecisionOpinion = ?,favouriteFighter=? WHERE Username=?;","none",(subOpinion,koOpinion,decOpinion,favouriteFighter,usernameToken))
+        self.connect("UPDATE dbo.Users SET SubOpinion = ?, KoOpinion = ?, DecisionOpinion = ?,favouriteFighter=? WHERE Username=?;","none",(self.subOpinion,self.koOpinion,self.decOpinion,favouriteFighter,self.usernameToken))
         self.initLeaderboard()
     #Initalise survey
     def initSurvey(self,new):
-        global newAccount
-        newAccount=new
+        self.newAccount=new
         self.ui.favouriteFighterCombo.clear()
         query=("SELECT FighterID, Name FROM Fighters;", "many", None)
         fighterList = self.connect(query[0],query[1],query[2])
@@ -821,7 +874,6 @@ WHERE ff.FighterID = ?
         for fighterID,fighterName in fighterList:
             self.ui.favouriteFighterCombo.addItem(fighterName,fighterID)
         self.navigate(7)
-   
     
     #ModifyFighter Subroutines  
     ##initialise the page
@@ -839,11 +891,10 @@ WHERE ff.FighterID = ?
         TotalLosses=0
         TotalWins=0
         TotalDraws=0
-        global modFighterCurrentId
         model = self.ui.modifyFighterListTable.model()
         row, col, value = self.onTableClick(self.ui.modifyFighterListTable, index)
-        modFighterCurrentId = model.item(row,0).text()
-        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterID=?;","one",(modFighterCurrentId,))
+        self.modFighterCurrentId = model.item(row,0).text()
+        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterID=?;","one",(self.modFighterCurrentId,))
         self.ui.modifyFighterListName.setText(fighterData[1])
         #Load image
         if fighterData[8]:
@@ -852,12 +903,12 @@ WHERE ff.FighterID = ?
         else:
             self.loadImage(None,self.ui.modifyFighterListImage,"File","defaultpfp.png")
         #Load record
-        fighterFightData=self.connect("SELECT * FROM FighterFights WHERE FighterID=?;","many",(modFighterCurrentId,))
+        fighterFightData=self.connect("SELECT * FROM FighterFights WHERE FighterID=?;","many",(self.modFighterCurrentId,))
         print(fighterFightData)
         fighterFightData = self.connect(
     "SELECT Result FROM FighterFights WHERE FighterID=?;",
     "many",
-    (modFighterCurrentId,) 
+    (self.modFighterCurrentId,) 
 )
         for (result,) in fighterFightData:
             if result == "W":
@@ -871,9 +922,9 @@ WHERE ff.FighterID = ?
         self.ui.modifyFighterListDraws.setText(str(TotalDraws))
     #delete fighter
     def deleteFighter(self):
-        print("Delete fighterID",modFighterCurrentId)
-        if modFighterCurrentId:
-            self.connect("DELETE FROM Fighters WHERE FighterID=?;","none",(modFighterCurrentId,))
+        print("Delete fighterID",self.modFighterCurrentId)
+        if self.modFighterCurrentId:
+            self.connect("DELETE FROM Fighters WHERE FighterID=?;","none",(self.modFighterCurrentId,))
             self.loadModifyFighter()
     #searchforfighter
     def modFighterSearchFighter(self):
@@ -903,10 +954,6 @@ WHERE ff.FighterID = ?
     #Odds Predictor
     ##Initialise combo boxes
     def initComboBoxes(self):
-        global updatingTables
-        global leftComboActive
-        global rightComboActive
-        global oddsComboCurrentWeightClass
         currentA = self.ui.fighterAComboBox.currentData()
         currentB = self.ui.fighterBComboBox.currentData()
         self.clearComboBoxes()
@@ -917,8 +964,8 @@ WHERE ff.FighterID = ?
         comboBoxes[1].blockSignals(True)
         self.clearComboBoxes()
         #Bring up combo data
-        if oddsComboCurrentWeightClass:
-            query=("SELECT FighterID, Name FROM Fighters WHERE WeightClass=?;", "many", (oddsComboCurrentWeightClass,))
+        if self.oddsComboCurrentWeightClass:
+            query=("SELECT FighterID, Name FROM Fighters WHERE WeightClass=?;", "many", (self.oddsComboCurrentWeightClass,))
         else:
             query = ("SELECT FighterID, Name FROM Fighters;", "many", None)
         fighterList = self.connect(query[0],query[1],query[2])
@@ -934,17 +981,15 @@ WHERE ff.FighterID = ?
         comboBoxes[0].blockSignals(False)
         comboBoxes[1].blockSignals(False)
         #Let it be changed again
-        if activePage != 6:
+        if self.activePage != 6:
             self.navigate(6)
     ##When combo boxes change    
     def comboBoxesChanged(self, index, box):
         #Check is updating is happening already 
-        global updatingTables
-        global oddsComboCurrentWeightClass
-        if updatingTables == True:
+        if self.updatingTables == True:
             print("Already updating-returning from comboboxeschanged...")
             return
-        updatingTables = True 
+        self.updatingTables = True 
         comboBoxes = [self.ui.fighterAComboBox, self.ui.fighterBComboBox]
         currentID = None
         #Set current id of box
@@ -955,14 +1000,14 @@ WHERE ff.FighterID = ?
         if currentID is not None:
             currentFighter = self.connect("SELECT * FROM Fighters WHERE FighterID=?", "one", (currentID,))
             if currentFighter is not None:
-                oddsComboCurrentWeightClass = currentFighter[2] 
-                print("current weight class:", oddsComboCurrentWeightClass)
+                self.oddsComboCurrentWeightClass = currentFighter[2] 
+                print("current weight class:", self.oddsComboCurrentWeightClass)
             else:
-                oddsComboCurrentWeightClass = None 
+                self.oddsComboCurrentWeightClass = None 
         else:
-            oddsComboCurrentWeightClass = None 
+            self.oddsComboCurrentWeightClass = None 
         self.initComboBoxes() 
-        updatingTables = False
+        self.updatingTables = False
         #Load images
         fighterAID = self.ui.fighterAComboBox.currentData()
         fighterBID = self.ui.fighterBComboBox.currentData()
@@ -996,10 +1041,8 @@ WHERE ff.FighterID = ?
         self.ui.fighterBComboBox.clear()
     ##Resets combo boxes
     def resetComboBoxes(self):
-        global oddsComboCurrentWeightClass
-        global updatingTables
-        updatingTables=True
-        oddsComboCurrentWeightClass=None
+        self.updatingTables=True
+        self.oddsComboCurrentWeightClass=None
         self.ui.fighterAComboBox.blockSignals(True)
         self.ui.fighterBComboBox.blockSignals(True)
         self.clearComboBoxes()
@@ -1016,14 +1059,13 @@ WHERE ff.FighterID = ?
         self.ui.fighterBBox.clear()
         self.ui.fighterAComboBox.blockSignals(False)
         self.ui.fighterBComboBox.blockSignals(False)
-        updatingTables = False  
+        self.updatingTables = False  
     ##init odds calc
     def initOddsCalc(self):
         self.initComboBoxes()
         self.navigate(6)
     ##Submit odds calculation and display  
     def submitOddsCalc(self): 
-        global usernameToken
         fighterAID = self.ui.fighterAComboBox.currentData()
         fighterBID = self.ui.fighterBComboBox.currentData()
         print(fighterAID)
@@ -1064,17 +1106,17 @@ WHERE ff.FighterID = ?
             self.ui.ProbResult.setText("50%")    
         ##Entertainment score calculation
         #Find average subs,kos,decs through whole roster
-        totalFights=self.connect("""SELECT COUNT(*) FROM Fights;""","one",None)
-        totalSubs=self.connect("""SELECT COUNT(*) FROM Fights WHERE Method='SUB';""","one",None)
-        totalDecs=self.connect("""SELECT COUNT(*) FROM Fights WHERE Method='DEC';""","one",None)
-        totalKos=self.connect("""SELECT COUNT(*) FROM Fights WHERE Method='KO';""","one",None)
-        averageDecRate=(totalDecs[0]/totalFights[0])*100
-        averageSubRate=(totalSubs[0]/totalFights[0])*100
-        averageKoRate=(totalKos[0]/totalFights[0])*100
+        totalFights=self.connect("""SELECT COUNT(*) FROM Fights;""","one",None)[0]
+        totalSubs=self.connect("""SELECT COUNT(*) FROM Fights WHERE Method='SUB';""","one",None)[0]
+        totalDecs=self.connect("""SELECT COUNT(*) FROM Fights WHERE Method='DEC';""","one",None)[0]
+        totalKos=self.connect("""SELECT COUNT(*) FROM Fights WHERE Method='KO';""","one",None)[0]
+        averageSubRate = (totalSubs / totalFights) * 100 if totalFights else 0
+        averageKoRate = (totalKos / totalFights) * 100 if totalFights else 0
+        averageDecRate = (totalDecs / totalFights) * 100 if totalFights else 0  
         #Find average subs,kos,decs rate for fighter A,map to prefs and make entertainment score
         fighterArray=[fighterAID,fighterBID]
         entertainmentRating=200
-        for j in range(1):
+        for j in range(2):
             totalFights=self.connect("""SELECT COUNT(*) FROM FighterFights WHERE FighterID=?;""","one",(fighterArray[j],))
             if totalFights[0] == 0:
                 entertainmentRating=50
@@ -1092,7 +1134,7 @@ WHERE ff.FighterID = ?
             fighterSubRate=(totalSubs[0]/totalFights[0])*100
             fighterKoRate=(totalKos[0]/totalFights[0])*100
             #Find out what fighters do above average
-            userData=self.connect("""SELECT SubOpinion,KoOpinion,DecisionOpinion,favouriteFighter FROM Users WHERE Username=?""","one",(usernameToken))
+            userData=self.connect("""SELECT SubOpinion,KoOpinion,DecisionOpinion,favouriteFighter FROM Users WHERE Username=?""","one",(self.usernameToken))
             fighterOpinionArray=[False,False,False,False]
             if fighterSubRate>averageSubRate:
                 fighterOpinionArray[0]=True
@@ -1117,15 +1159,102 @@ WHERE ff.FighterID = ?
     #Leaderboard subproblems
     ##Initialize leaderboard
     def initLeaderboard(self):
-        global isAdmin
-        self.genTable(("SELECT FighterID,Name,WeightClass,Birthdate,Gym FROM Fighters ORDER BY EloRating DESC;","many",None),["FighterID","Name","Weight Class","Birthdate","Gym"],self.ui.leaderboardTableView)
+        headers = ["FighterID", "Name", "Rating", "Preference", "Weight Class", "Birthdate", "Gym"]
+        userData = self.connect("SELECT SubOpinion, KoOpinion, DecisionOpinion, favouriteFighter FROM Users WHERE Username=?","one",(self.usernameToken,))
+        if not userData:
+            userData = (1, 1, 1, 0)
+        self.subOpinion, self.koOpinion, self.decOpinion, favouriteFighter = userData
+        totalFights = self.connect("SELECT COUNT(*) FROM Fights;", "one", None)[0]
+        totalSubs = self.connect("SELECT COUNT(*) FROM Fights WHERE Method='SUB';", "one", None)[0]
+        totalKos = self.connect("SELECT COUNT(*) FROM Fights WHERE Method='KO';", "one", None)[0]
+        totalDecs = self.connect("SELECT COUNT(*) FROM Fights WHERE Method='DEC';", "one", None)[0]
+        averageSubRate = (totalSubs / totalFights) * 100 if totalFights else 0
+        averageKoRate = (totalKos / totalFights) * 100 if totalFights else 0
+        averageDecRate = (totalDecs / totalFights) * 100 if totalFights else 0
+        rows = self.connect("SELECT FighterID, Name, EloRating, WeightClass, Birthdate, Gym FROM Fighters;","many",None)
+        if not rows:
+            rows=[]
+        newRows = []
+        for fighterID, fighterName, eloRating, weightClass, birthdate, gym in rows:
+        # get fighter stats
+            fighterFightCount = self.connect(
+                "SELECT COUNT(*) FROM FighterFights WHERE FighterID=?;",
+                "one",
+                (fighterID,)
+            )[0]
+            if fighterFightCount == 0:
+                preferenceScore = 0
+            else:
+                fighterSubs = self.connect("""
+                    SELECT COUNT(*) FROM FighterFights
+                    WHERE FighterID=? AND FightID IN
+                    (SELECT FightID FROM Fights WHERE Method='SUB');
+                """, "one", (fighterID,))[0]
+                fighterKos = self.connect("""
+                    SELECT COUNT(*) FROM FighterFights
+                    WHERE FighterID=? AND FightID IN
+                    (SELECT FightID FROM Fights WHERE Method='KO');
+                """, "one", (fighterID,))[0]
+                fighterDecs = self.connect("""
+                    SELECT COUNT(*) FROM FighterFights
+                    WHERE FighterID=? AND FightID IN
+                    (SELECT FightID FROM Fights WHERE Method='DEC');
+                """, "one", (fighterID,))[0]
+                fighterSubRate = (fighterSubs / fighterFightCount) * 100
+                fighterKoRate = (fighterKos / fighterFightCount) * 100
+                fighterDecRate = (fighterDecs / fighterFightCount) * 100
+                preferenceScore = 0
+                if fighterSubRate > averageSubRate:
+                    preferenceScore += self.subOpinion * 6
+                if fighterKoRate > averageKoRate:
+                    preferenceScore += self.koOpinion * 6
+                if fighterDecRate > averageDecRate:
+                    preferenceScore += self.decOpinion * 6
+                if fighterID == favouriteFighter:
+                    preferenceScore += 20
+                preferenceScore = round(preferenceScore)
+            newRows.append((fighterID,fighterName,eloRating,preferenceScore,weightClass,birthdate,gym))
+        rows = newRows
+        rows=list(rows)
+        #Insertion sort
+        for i in range(1, len(rows)):
+            currentItem = rows[i]
+            j = i - 1
+            while j >= 0 and (
+                rows[j][2] < currentItem[2] or
+                (rows[j][2] == currentItem[2] and str(rows[j][1]).lower() > str(currentItem[1]).lower())
+            ):
+                rows[j + 1] = rows[j]
+                j -= 1
+            rows[j + 1] = currentItem
+        #Build the table
+        model = QStandardItemModel()
+        model.setHorizontalHeaderLabels(headers)
+        for row in rows:
+            itemRow = []
+            for colIndex, field in enumerate(row):
+                item = QStandardItem()
+                if headers[colIndex] in ["Rating", "Preference"] and isinstance(field, (int, float)):
+                    item.setData(round(field), Qt.DisplayRole)
+                else:
+                    item.setData(str(field), Qt.DisplayRole)
+                itemRow.append(item)
+            model.appendRow(itemRow)
+        self.ui.leaderboardTableView.setModel(model)
         self.ui.leaderboardTableView.setColumnHidden(0, True)
+        header = self.ui.leaderboardTableView.horizontalHeader()
+        header.setSortIndicator(2, Qt.DescendingOrder)   
+        self.ui.leaderboardTableView.setSortingEnabled(True)   
+        header = self.ui.leaderboardTableView.horizontalHeader()
+        header.setSectionResizeMode(QHeaderView.Stretch)
+        self.ui.leaderboardTableView.setAlternatingRowColors(True)
+        self.ui.leaderboardTableView.verticalHeader().setDefaultSectionSize(30)
+        header.setDefaultAlignment(Qt.AlignCenter)
         self.ui.leaderboardFighterBelts.setText("")
         self.ui.leaderboardFighterRecord.setText("")
-        #Hide admin panel if user isnt admin
-        if isAdmin == 0:   
+        if self.isAdmin == 0:
             self.ui.leaderboardManageListButton.hide()
-        else:              
+        else:
             self.ui.leaderboardManageListButton.show()
         self.navigate(2)
     ##Load fighter data from leaderboard
@@ -1133,11 +1262,10 @@ WHERE ff.FighterID = ?
         TotalLosses=0
         TotalWins=0
         TotalDraws=0
-        global leaderboardCurrentId
         model = self.ui.leaderboardTableView.model()
         row, col, value = self.onTableClick(self.ui.leaderboardTableView, index)
-        leaderboardCurrentId = model.item(row,0).text()
-        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterID=?;","one",(leaderboardCurrentId,))
+        self.leaderboardCurrentId = model.item(row,0).text()
+        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterID=?;","one",(self.leaderboardCurrentId,))
         self.ui.leaderboardFighterName.setText(fighterData[1])
         #Load image
         if fighterData[8]:
@@ -1149,7 +1277,7 @@ WHERE ff.FighterID = ?
         fighterFightData = self.connect(
     "SELECT Result FROM FighterFights WHERE FighterID=?;",
     "many",
-    (leaderboardCurrentId,) 
+    (self.leaderboardCurrentId,) 
 )
         for (result,) in fighterFightData:
             if result == "W":
@@ -1161,7 +1289,7 @@ WHERE ff.FighterID = ?
         record=str(TotalWins)+"-"+str(TotalDraws)+"-"+str(TotalLosses)
         self.ui.leaderboardFighterRecord.setText(record)
         #Load belts
-        beltsList=self.connect("SELECT * FROM Belts WHERE FighterID=(SELECT FighterID FROM Fighters WHERE FighterID=?);","many",(leaderboardCurrentId,))
+        beltsList=self.connect("SELECT * FROM Belts WHERE FighterID=(SELECT FighterID FROM Fighters WHERE FighterID=?);","many",(self.leaderboardCurrentId,))
         if beltsList:
                 beltsText="Belts: "
                 edge=0
@@ -1207,10 +1335,9 @@ WHERE ff.FighterID = ?
     #Admin-side profile subroutines
     ##Initialise fighter proifle page on admin side
     def showProfileAdmin(self,index):
-        global fighterId
-        fighterId = index.siblingAtColumn(0).data() 
-        print("display profile of fighterID "+str(fighterId))
-        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterId=?","one",(fighterId))
+        self.fighterId = index.siblingAtColumn(0).data() 
+        print("display profile of fighterID "+str(self.fighterId))
+        fighterData=self.connect("SELECT * FROM Fighters WHERE FighterId=?","one",(self.fighterId))
         print("fighterdata:"+str(fighterData))
         self.ui.modifyFighterTitle.setText("Editing Fighter:"+str(fighterData[1]))
         self.ui.modifyFighterName.setPlainText(str(fighterData[1]))
@@ -1262,7 +1389,9 @@ WHERE ff.FighterID = ?
             FighterFights.Result AS [Result],
             Fights.Method        AS [Method],
             Fights.EndRound      AS [Round],
-            CONVERT(char(8), Fights.EndTime, 108) AS [Time],
+            CAST((DATEPART(HOUR, Fights.EndTime) * 60) + DATEPART(MINUTE, Fights.EndTime) AS varchar(10))
+            + ':'
+            + RIGHT('0' + CAST(DATEPART(SECOND, Fights.EndTime) AS varchar(2)), 2) AS [Time],
             Fights.Title
         FROM FighterFights
         JOIN Fights ON Fights.FightID = FighterFights.FightID
@@ -1271,7 +1400,7 @@ WHERE ff.FighterID = ?
         ORDER BY Fights.FightID DESC;
         """
         self.genTable(
-            (query, "many", (fighterId,)),
+            (query, "many", (self.fighterId,)),
             headers=["FighterFightsID","FightID","OppFFID","OpponentID","EventID","Result","Method","Round","Time","Title"],
             table=self.ui.modifyFighterFightsTable,
             isFightsTable=True
@@ -1296,15 +1425,31 @@ WHERE ff.FighterID = ?
         self.loadImage(url,self.ui.modifyFighterImage,None,None)
     ##Submit button
     def submitProfile(self):
-        global fighterId
         nameToSubmit=self.ui.modifyFighterName.toPlainText()
         gymToSubmit=self.ui.modifyFighterGym.toPlainText()
         weightClassToSubmit=self.ui.modifyFighterWeightclass.currentText()
-        #validating date 
+        #Validating name
+        if nameToSubmit.strip() == "":
+            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Name is blank.")
+            return
+        if len(nameToSubmit) > 60:
+            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Name is too long.")
+            return
+        if "\n" in nameToSubmit or "\r" in nameToSubmit:
+            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No linebreaks allowed in names.")
+            return
+        #Gym validation
+        if len(gymToSubmit) > 80:
+            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Name is too long.")
+            return
+        if "\n" in gymToSubmit or "\r" in gymToSubmit:
+            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "No linebreaks allowed in names.")
+            return
+        #validating date
         dateToSubmit=self.ui.modifyFighterBirthday.date().toString("yyyy-MM-dd")
         q = self.ui.modifyFighterBirthday.date()
-        dob = datetime.date(q.year(), q.month(), q.day())
-        today = datetime.date.today()
+        dob = date(q.year(), q.month(), q.day())
+        today = date.today()
         minAge = 16
         maxAge = 60
         if dob > today:
@@ -1315,22 +1460,28 @@ WHERE ff.FighterID = ?
             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Age must be between 16 and 60")
             return
         imageLinkToSubmit=self.ui.modifyFighterImageLink.toPlainText()
-        if imageLinkToSubmit=="None":
+        #Image validation
+        if imageLinkToSubmit=="None" or imageLinkToSubmit.strip()=="":
             imageLinkToSubmit=None
+        else:
+            if len(imageLinkToSubmit)>256:
+                QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Image link too long.")
+                return
+            
         #validating height and reach
         heightSubmitted=self.ui.modifyFighterHeight.toPlainText()
         reachSubmitted=self.ui.modifyFighterReach.toPlainText()
         convertedHeight=self.feetConversion(heightSubmitted)
         convertedReach=self.feetConversion(reachSubmitted)
         if convertedHeight == False or convertedReach == False:
-            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Bad Height/Reach Value")
+            QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Bad Height/Reach Value (Bad format/range)")
             return
         #Checking for duplicates
         existingFighter=self.connect("SELECT COUNT(*) FROM Fighters WHERE Name=? AND Birthdate=?","one",(nameToSubmit,dateToSubmit,))
         if existingFighter[0] > 1:
             QtWidgets.QMessageBox.critical(None, "Submit Edits Error", "Fighter already exists")
             return
-        self.connect("UPDATE Fighters SET Name=?,WeightClass=?,Birthdate=?,Gym=?,ImageURL=?,Height=?,Reach=? WHERE FighterID=?","none",(nameToSubmit,weightClassToSubmit,dateToSubmit,gymToSubmit,imageLinkToSubmit,convertedHeight,convertedReach,fighterId)) 
+        self.connect("UPDATE Fighters SET Name=?,WeightClass=?,Birthdate=?,Gym=?,ImageURL=?,Height=?,Reach=? WHERE FighterID=?","none",(nameToSubmit,weightClassToSubmit,dateToSubmit,gymToSubmit,imageLinkToSubmit,convertedHeight,convertedReach,self.fighterId)) 
     #Tooltip for fighter IDs   
     def fighterIdTooltip(self, index):
         if not index.isValid():
@@ -1355,7 +1506,6 @@ WHERE ff.FighterID = ?
             QToolTip.hideText()
     ##Add fight button
     def modifyFighterAddFight(self):
-        global fighterId
         print("Add fight")
         query = """
         DECLARE @FightID INT;
@@ -1369,11 +1519,10 @@ WHERE ff.FighterID = ?
         INSERT INTO dbo.FighterFights (FightID, FighterID, Corner, Result)
         VALUES (@FightID, @FighterID, NULL, NULL);
         """
-        self.connect(query, "none", (fighterId,))
+        self.connect(query, "none", (self.fighterId,))
         self.refreshAdminFightsTable()
     #Delete fight
     def modifyFighterDeleteFight(self):
-        global fighterId
         print("Delete fight")
 
         table = self.ui.modifyFighterFightsTable
@@ -1403,16 +1552,14 @@ WHERE ff.FighterID = ?
         self.refreshAdminFightsTable()
     ##Select fight 
     def modifyFighterSelectFight(self,index):
-        global modFighterSelected
-        modFighterCurrentId=index.siblingAtColumn(1).data() 
+        self.modFighterCurrentId=index.siblingAtColumn(1).data() 
     
     #User-side profile subroutines
     ##Intialise fighter profile page on user side
     def showProfileUser(self,index):
-        global userProfileFighterID
         self.ui.nodatamessage.hide()
         fighterId = index.siblingAtColumn(0).data() 
-        userProfileFighterID=fighterId
+        self.userProfileFighterID=fighterId
         print("display profile of fighterID "+fighterId)
         fighterData=self.connect("SELECT * FROM Fighters WHERE FighterId=?","one",(fighterId))
         print("fighterdata:"+str(fighterData))
@@ -1434,7 +1581,6 @@ WHERE ff.FighterID = ?
             self.ui.fighterProfileHeightLabel.setPlainText(height)
             self.ui.fighterProfileReachLabel.setPlainText(reach)
         query="""DECLARE @FighterID INT = ?;
-
 SELECT
     (
         SELECT TOP 1 Fighters.Name
@@ -1448,12 +1594,12 @@ SELECT
     FighterFights.Result AS [Result],
     Fights.Method AS [Method],
     Fights.EndRound AS [Round],
-    CONVERT(char(5), Fights.EndTime, 108) AS [Time]
+    CAST((DATEPART(HOUR, Fights.EndTime) * 60) + DATEPART(MINUTE, Fights.EndTime) AS varchar(10))
+    + ':'
+    + RIGHT('0' + CAST(DATEPART(SECOND, Fights.EndTime) AS varchar(2)), 2) AS [Time]
 FROM FighterFights
 JOIN Fights ON Fights.FightID = FighterFights.FightID
-JOIN Events ON Events.EventID = Fights.EventID
-WHERE FighterFights.FighterID = @FighterID
-ORDER BY Fights.FightID DESC;"""
+JOIN Events ON Events.EventID = Fights.EventID"""
         self.genTable((query,"many",(fighterData[0],)),["Opponent Name","Event Name","Date","Result","Method","Round","Time"],self.ui.fighterProfileFights,isFightsTable=False)
         #Piechart-Figure out totals (sub/ko/dec)
         totalWinsQuery="""SELECT COUNT(*)
@@ -1543,7 +1689,7 @@ JOIN Fights ON Fights.FightID = FighterFights.FightID
 JOIN Events ON Events.EventID = Fights.EventID
 WHERE FighterFights.FighterID = @FighterID
 ORDER BY Events.Date DESC;"""
-        fightRows=self.connect(query,"maFny",userProfileFighterID)
+        fightRows=self.connect(query,"maFny",self.userProfileFighterID)
         if fightRows is None:
             self.ui.fighterProfileStreakLabel.setText("No Streak")
         else:
@@ -1560,7 +1706,7 @@ ORDER BY Events.Date DESC;"""
                         streakLoopTerminated=False
                 self.ui.fighterProfileStreakLabel.setText("Streak:"+str(streakResult)+"-"+str(streak))
         #deal with rating
-        self.displayApproval(userProfileFighterID)
+        self.displayApproval(self.userProfileFighterID)
         #Deal with top 10 fighters they have fought against
         notableFightsQuery="""SELECT 
     Fighters.Name AS OpponentName,
@@ -1580,7 +1726,7 @@ WHERE FighterFights.FighterID = ?
         )
         ORDER BY EloRating DESC
   );"""
-        notableFightsList=self.connect(notableFightsQuery,"many",(userProfileFighterID,userProfileFighterID,userProfileFighterID,))
+        notableFightsList=self.connect(notableFightsQuery,"many",(self.userProfileFighterID,self.userProfileFighterID,self.userProfileFighterID,))
         notableFightsString="Notable Fights:"
         notableLimit=3
         for i in range(len(notableFightsList)):
@@ -1605,10 +1751,8 @@ WHERE FighterFights.FighterID = ?
         print(rating)  
     ##Approval votes
     def voteApproval(self,fighterID,rating):
-        global usernameToken
-        global userProfileFighterID
         rating=1 if int(rating) == 1 else 0
-        user=self.connect("SELECT userId FROM Users where Username=?;","one",(usernameToken))
+        user=self.connect("SELECT userId FROM Users where Username=?;","one",(self.usernameToken))
         if not user:
             QtWidgets.QMessageBox.critical(None, "Error", "No user found")
             return
@@ -1617,7 +1761,7 @@ WHERE FighterFights.FighterID = ?
         if not existing:
             self.connect("INSERT INTO Approvals VALUES (?,?,?)","none",(userID,fighterID,rating))
         if existing:
-            self.connect("UPDATE Approvals SET Rating=? WHERE UserID=? AND FighterID=?","none",(rating,userID,userProfileFighterID))
+            self.connect("UPDATE Approvals SET Rating=? WHERE UserID=? AND FighterID=?","none",(rating,userID,self.userProfileFighterID))
         self.displayApproval(fighterID)
         
     #Options subroutines
@@ -1629,8 +1773,7 @@ WHERE FighterFights.FighterID = ?
         self.navigate(8)
     #Belt clicked
     def beltClicked(self,index):
-        global beltClickedIndex
-        beltClickedIndex=index.siblingAtColumn(0).data() 
+        self.beltClickedIndex=index.siblingAtColumn(0).data() 
     ##Add belt
     def addBelt(self):
         self.connect("INSERT INTO Belts VALUES (?,1)","none",("Blank Belt",))
@@ -1639,17 +1782,15 @@ WHERE FighterFights.FighterID = ?
         print("Add belt")
     ##Delete belt
     def deleteBelt(self):
-        global beltClickedIndex
         print("Delete belt")
-        if beltClickedIndex is not None:
-            self.connect("DELETE FROM Belts WHERE BeltID=?","none",(beltClickedIndex,))
-            self.connect("""UPDATE Fights SET WeightClass='RETIRED' WHERE WeightClass=(SELECT WeightClass FROM Belts WHERE BeltID=?)""","none",(beltClickedIndex,))
+        if self.beltClickedIndex is not None:
+            self.connect("DELETE FROM Belts WHERE BeltID=?","none",(self.beltClickedIndex,))
+            self.connect("""UPDATE Fights SET WeightClass='RETIRED' WHERE WeightClass=(SELECT WeightClass FROM Belts WHERE BeltID=?)""","none",(self.beltClickedIndex,))
             self.genTable(("SELECT * FROM Belts","many",None),["Belt ID","Title","Holder ID"],self.ui.beltsTable)
             self.submitEdits()
     #Event clicked
     def eventClicked(self,index):
-        global eventClickedIndex
-        eventClickedIndex=index.siblingAtColumn(0).data() 
+        self.eventClickedIndex=index.siblingAtColumn(0).data() 
     ##Add event
     def addEvent(self):
         self.connect("INSERT INTO Events (Name,Location,Date) VALUES (?,?,?)","none",("name","location","1984-02-02"))
@@ -1658,12 +1799,11 @@ WHERE FighterFights.FighterID = ?
         print("Add event")
     ##Delete event
     def deleteEvent(self):
-        global eventClickedIndex
         print("Delete event")
-        if eventClickedIndex is not None:
+        if self.eventClickedIndex is not None:
             dependencies=False
             #Check for dependencies and erase them if so ask if they want them gone as well
-            depedencyQuery=self.connect("SELECT COUNT(*) FROM Fights WHERE EventID=?;","one",(eventClickedIndex,))
+            depedencyQuery=self.connect("SELECT COUNT(*) FROM Fights WHERE EventID=?;","one",(self.eventClickedIndex,))
             dependencyCount=depedencyQuery[0]
             dependencies=(dependencyCount>0)
             if dependencies==True:
@@ -1676,12 +1816,12 @@ WHERE FighterFights.FighterID = ?
                 )
                 if reply == QMessageBox.Yes:
                     #Erase event and its dependencies
-                    self.connect("DELETE FROM FighterFights WHERE FightID IN (SELECT FightID FROM Fights WHERE EventID=?);","none",(eventClickedIndex))
-                    self.connect("DELETE FROM Fights WHERE EventID=?;","none",(eventClickedIndex))
+                    self.connect("DELETE FROM FighterFights WHERE FightID IN (SELECT FightID FROM Fights WHERE EventID=?);","none",(self.eventClickedIndex))
+                    self.connect("DELETE FROM Fights WHERE EventID=?;","none",(self.eventClickedIndex))
                 else:
                     return
             if dependencies==False: 
-                self.connect("DELETE FROM Events WHERE EventID=?","none",(eventClickedIndex,))
+                self.connect("DELETE FROM Events WHERE EventID=?","none",(self.eventClickedIndex,))
             self.genTable(("SELECT * FROM Events","many",None),["Event ID","Name","Location","Date"],self.ui.eventsTable)  
             self.submitEdits(self.ui.eventsTable)
             
@@ -1724,7 +1864,6 @@ WHERE WeightClass=?""","none",(mostRecentWinner[0],beltLessDivisions[belt][0],))
         print("Import from UFC")
     ##Refresh admin  fights table
     def refreshAdminFightsTable(self):
-        global fighterId
         query = """
         DECLARE @FighterID INT = ?;
 
@@ -1758,7 +1897,7 @@ WHERE WeightClass=?""","none",(mostRecentWinner[0],beltLessDivisions[belt][0],))
         """
         #Generate admin fights table
         self.genTable(
-            (query, "many", (fighterId,)),
+            (query, "many", (self.fighterId,)),
             headers=["FighterFightsID","FightID","OppFFID","OpponentID","EventID","Result","Method","Round","Time","Title"],
             table=self.ui.modifyFighterFightsTable,
             isFightsTable=True
@@ -1851,10 +1990,12 @@ ORDER BY
             WHERE FighterID = ?;
             """
             params = (
-                new_r1, new_rd1, new_sigma1, fighterA,
-                new_r2, new_rd2, new_sigma2, fighterB
+                newR1, newRd1, newSigma1, fighterA,
+                newR2, newRd2, newSigma2, fighterB
             )
             self.connect(sql, "none", params)
+            #Round them all
+            self.connect("""UPDATE dbo.Fighters SET EloRating = ROUND(EloRating, 0);""", "none", None)
             #finally, refresh fighter table
         msg = QMessageBox()
         msg.setIcon(QMessageBox.Information)
@@ -1867,6 +2008,7 @@ ORDER BY
     #Feet validation and conversion
     def feetConversion(self,length):
         try:
+            #Format validation
             inputLength = length.strip().replace('"', '')
             splitLength = inputLength.split("'")
             if len(splitLength)!=2:
@@ -1877,6 +2019,10 @@ ORDER BY
             inches=splitLength[1]
             if int(inches) > 11 or int(inches) < 0:
                 return(False)
+            #Range validation
+            if feet<4 or feet>8:
+                return False
+            #Conversion for storage
             inches=float(inches)/100
             length=float(inches)+float(feet)
             return(length)
@@ -1884,7 +2030,7 @@ ORDER BY
             return(False)
    
 #Glicko elo calculation
-#To stay truthful to the algorithm, I had to make it so the variables had names that can be quite hard to identify. Here is the dictionary for all of the variables i use:
+#I'm dealing with a really complex algorithm here so to stay truthful to the algorithm, I had to make it so the variables had names that can be quite hard to identify. Here is the dictionary for all of the variables i use:
 #r1 and r1 are player ratings for 1 and 2 respectively
 #rd1 and rd2 are rating deviation
 #sigma1 and sigma2 is volatility
@@ -1936,7 +2082,7 @@ def glicko2(r1, rd1, sigma1, r2, rd2, sigma2, result,
                 s1 = 0.5
             else:
                 raise ValueError("result must be Win/Loss/Draw or 1/0/0.5")
-        #Handle opponent result
+        #Handle opponent result (same principles here i'm just doing the opposite of whatever p1 got)
         s2 = 1.0 - s1 if s1 != 0.5 else 0.5 
         #convert to glicko algorithm scales
         SCALE = 173.7178
