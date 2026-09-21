@@ -70,6 +70,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.decOpinion=1
         #Other session vars
         self.activePage=None
+        self.isAdmin=None
+        self.usernameToken=None
+        self.fighterId=None
                 
         #init options elements
         self.ui.optionsReturnButton.clicked.connect(lambda:self.loadModifyFighter())
@@ -118,7 +121,6 @@ class MainWindow(QtWidgets.QMainWindow):
         self.ui.modifyFighterDeleteFight.clicked.connect(lambda:self.modifyFighterDeleteFight())
         self.ui.modifySubmitButton.clicked.connect(lambda:self.updateEloRatings())
         ##setup modifyfighter tooltip system
-        self.fighterNameMap = dict(self.connect("SELECT FighterID, Name FROM Fighters;", "many", None) or []) #dictionary so i don't have to repeatedly call for the sql
         self.ui.modifyFighterFightsTable.setMouseTracking(True)
         self.ui.modifyFighterFightsTable.entered.connect(self.fighterIdTooltip)
         
@@ -227,7 +229,7 @@ class MainWindow(QtWidgets.QMainWindow):
         model.setHorizontalHeaderLabels(headers)
         if dbTableName is not None and pkColName is not None and dbCols is not None:
             model.itemChanged.connect(lambda item:self.recordEdit(item))
-        if isFightsTable is not None:
+        if isFightsTable:
             model.itemChanged.connect(lambda item:self.recordFightsEdit(item))
         for row in rows:
             item = [QStandardItem(str(field)) for field in row]
@@ -697,8 +699,7 @@ WHERE FighterFights.FighterID = ?
     #Navigation subroutines 
     def navigate(self,page):
         #Set active page
-        self.activePage
-        activePage = page
+        self.activePage = page
         pages=[
         self.ui.fighterProfiles,
         self.ui.leaderboard,
@@ -1495,8 +1496,8 @@ WHERE FighterFights.FighterID = ?
         except (TypeError, ValueError):
             QToolTip.hideText()
             return
-
-        name = self.fighterNameMap.get(fid)
+        fighterNameMap = dict(self.connect("SELECT FighterID, Name FROM Fighters;", "many", None) or [])
+        name = fighterNameMap.get(fid)
         if name:
             QToolTip.showText(QCursor.pos(), name, self.ui.modifyFighterFightsTable)
         else:
